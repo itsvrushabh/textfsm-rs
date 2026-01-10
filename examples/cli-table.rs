@@ -18,7 +18,7 @@ fn verify(
     row: &cli_table::CliTableRow,
     data_name: &str,
     yaml_verify_name: &str,
-) -> VerifyResult {
+) -> Result<VerifyResult> {
     let yaml = std::fs::read_to_string(&yaml_verify_name).expect("YAML File read failed");
 
     if let Ok(yaml_map) = serde_yaml::from_str::<ParsedSample>(&yaml) {
@@ -26,9 +26,9 @@ fn verify(
 
         for short_template_name in &row.templates {
             let template_name = format!("{}/{}", template_dir, short_template_name);
-            let mut textfsm = TextFSM::from_file(&template_name);
+            let mut textfsm = TextFSM::from_file(&template_name)?;
             let new_result =
-                textfsm.parse_file(&data_name, Some(DataRecordConversion::LowercaseKeys));
+                textfsm.parse_file(&data_name, Some(DataRecordConversion::LowercaseKeys))?;
             println!("NEW RESULT from {}: {:?}", short_template_name, &new_result);
             // merge with the result
             if result.len() == 0 {
@@ -50,7 +50,7 @@ fn verify(
 
         if result == yaml_map.parsed_sample {
             println!("Parsed result matches YAML");
-            VerifyResult::VerifySuccess
+            Ok(VerifyResult::VerifySuccess)
         } else {
             println!("Results differ");
             println!("Records: {:?}", &result);
@@ -73,16 +73,15 @@ fn verify(
             println!("\n");
             if mismatch_count == 0 {
                 println!("Results differ, but only by order");
-                VerifyResult::VerifySuccess
+                Ok(VerifyResult::VerifySuccess)
             } else {
                 println!("Results differ = mismatch count = {}", &mismatch_count);
-                VerifyResult::ResultsDiffer
+                Ok(VerifyResult::ResultsDiffer)
             }
         }
     } else {
         println!("WARNING: YAML did not load correctly!");
         panic!("Could not load YAML");
-        VerifyResult::CouldNotLoadYaml
     }
 }
 

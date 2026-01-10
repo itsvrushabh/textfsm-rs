@@ -19,9 +19,9 @@ fn main() {
     let yaml_verify_name = std::env::args()
         .nth(3)
         .expect("Missing TextFSM verify data YAML file name");
-    let mut textfsm = TextFSM::from_file(&template_name);
+    let mut textfsm = TextFSM::from_file(&template_name).unwrap();
     let yaml = std::fs::read_to_string(&yaml_verify_name).expect("YAML File read failed");
-    let result = textfsm.parse_file(&data_name, Some(DataRecordConversion::LowercaseKeys));
+    let result = textfsm.parse_file(&data_name, Some(DataRecordConversion::LowercaseKeys)).unwrap();
     println!("RESULT: {:?}\n", &result);
 
     if let Ok(yaml_map) = serde_yaml::from_str::<ParsedSample>(&yaml) {

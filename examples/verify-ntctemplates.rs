@@ -13,16 +13,16 @@ enum VerifyResult {
     ResultsDiffer,
 }
 
-fn verify(template_name: &str, data_name: &str, yaml_verify_name: &str) -> VerifyResult {
-    let mut textfsm = TextFSM::from_file(&template_name);
+fn verify(template_name: &str, data_name: &str, yaml_verify_name: &str) -> Result<VerifyResult> {
+    let mut textfsm = TextFSM::from_file(&template_name)?;
     let yaml = std::fs::read_to_string(&yaml_verify_name).expect("YAML File read failed");
 
-    let result = textfsm.parse_file(&data_name, Some(DataRecordConversion::LowercaseKeys));
+    let result = textfsm.parse_file(&data_name, Some(DataRecordConversion::LowercaseKeys))?;
     println!("RESULT: {:?}\n", &result);
     if let Ok(yaml_map) = serde_yaml::from_str::<ParsedSample>(&yaml) {
         if result == yaml_map.parsed_sample {
             println!("Parsed result matches YAML");
-            VerifyResult::VerifySuccess
+            Ok(VerifyResult::VerifySuccess)
         } else {
             println!("Results differ");
             println!("Records: {:?}", &result);
@@ -45,20 +45,19 @@ fn verify(template_name: &str, data_name: &str, yaml_verify_name: &str) -> Verif
             println!("\n\n");
             if mismatch_count == 0 {
                 println!("Results differ, but only by order");
-                VerifyResult::VerifySuccess
+                Ok(VerifyResult::VerifySuccess)
             } else {
                 println!("Results differ");
-                VerifyResult::ResultsDiffer
+                Ok(VerifyResult::ResultsDiffer)
             }
         }
     } else {
         println!("WARNING: YAML did not load correctly!");
         panic!("Could not load YAML");
-        VerifyResult::CouldNotLoadYaml
     }
 }
 
-fn collect_file_names(template_dir: &str, extension: &str) -> Result<Vec<String>, std::io::Error> {
+fn collect_file_names(template_dir: &str, extension: &str) -> Result<Vec<String>> {
     let mut base_names = Vec::new();
 
     for entry in std::fs::read_dir(template_dir)? {
@@ -75,7 +74,7 @@ fn collect_file_names(template_dir: &str, extension: &str) -> Result<Vec<String>
     Ok(base_names)
 }
 
-fn collect_bare_directories(base_dir: &str) -> Result<Vec<String>, std::io::Error> {
+fn collect_bare_directories(base_dir: &str) -> Result<Vec<String>> {
     let mut dir_names = Vec::new();
 
     for entry in std::fs::read_dir(base_dir)? {
@@ -155,7 +154,7 @@ fn main() {
                     if std::path::Path::new(&yaml_file).exists() {
                         println!("VERIFY: {} {} {}", &template_file, &data_file, &yaml_file);
                         verify_count += 1;
-                        match verify(&template_file, &data_file, &yaml_file) {
+                        match verify(&template_file, &data_file, &yaml_file).unwrap() {
                             VerifyResult::CouldNotLoadYaml => {
                                 result_no_yaml_count += 1;
                             }
