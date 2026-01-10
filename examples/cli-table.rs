@@ -7,7 +7,6 @@ struct ParsedSample {
 }
 
 enum VerifyResult {
-    CouldNotLoadYaml,
     VerifySuccess,
     ResultsDiffer,
 }
@@ -33,7 +32,7 @@ fn verify(
             if result.len() == 0 {
                 result = new_result;
             } else {
-                for (i, nrow) in new_result.into_iter().enumerate() {
+                for (_i, nrow) in new_result.into_iter().enumerate() {
                     for res in result.iter_mut() {
                         if &res.record_key != &nrow.record_key {
                             continue;
@@ -119,12 +118,12 @@ fn collect_bare_directories(base_dir: &str) -> Result<Vec<String>> {
     Ok(dir_names)
 }
 
-struct TestRecord {
-    template_name: String,
-    test_family_name: String,
-    test_set_name: String,
-    test_data_file_name: String,
-    test_yaml_file_name: String,
+struct _TestRecord {
+    _template_name: String,
+    _test_family_name: String,
+    _test_set_name: String,
+    _test_data_file_name: String,
+    _test_yaml_file_name: String,
 }
 
 fn main() {
@@ -153,7 +152,7 @@ fn main() {
     println!("{} template names found", template_names.len());
     println!("{} test families found", test_family_names.len());
 
-    let mut all_tests: Vec<TestRecord> = vec![];
+    let _all_tests: Vec<_TestRecord> = vec![];
 
     let mut verify_count = 0;
     let mut result_no_yaml_count = 0;
