@@ -4,13 +4,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-pest = "*"
-pest_derive ="*"
-regex = "*"
-fancy-regex = "*"
-serde = { version = "*", features = ["derive"] }
-serde_yaml = "*"
-log = "*"
-env_logger = "*"
-csv = "*"
+pest = "2.8.5"
+pest_derive = "2.8.5"
+regex = "1.12.2"
+fancy-regex = "0.17.0"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_yaml = "0.9.34"
+log = "0.4.29"
+env_logger = "0.11.8"
+csv = "1.4.0"
+thiserror = "2.0.17"
 

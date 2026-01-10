@@ -1,4 +1,7 @@
-use log::{debug, error, info, log_enabled, trace, Level};
+pub mod error;
+pub use error::{Result, TextFsmError};
+use std::fmt;
+use log::{debug, error, trace};
 pub use pest::iterators::Pair;
 pub use pest::Parser;
 use pest_derive::Parser;
@@ -152,6 +155,17 @@ impl Default for DataRecord {
 pub enum Value {
     Single(String),
     List(Vec<String>),
+}
+
+use std::fmt;
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Value::Single(s) => write!(f, "{}", s),
+            Value::List(l) => write!(f, "{:?}", l),
+        }
+    }
 }
 
 #[derive(Parser, Debug, Default, Clone)]
@@ -364,11 +378,12 @@ impl TextFSMParser {
     pub fn compile_state_rule(
         rule: &StateRule,
         values: &HashMap<String, ValueDefinition>,
-    ) -> Result<StateRuleCompiled, String> {
+    ) -> Result<StateRuleCompiled> {
         let mut expanded_rule_match: String = format!("");
         let rule_match = rule.rule_match.clone();
         let mut match_variables: Vec<String> = vec![];
-        let varsubst = varsubst::VariableParser::parse_dollar_string(&rule_match).unwrap();
+        let varsubst = varsubst::VariableParser::parse_dollar_string(&rule_match)
+            .map_err(|e| TextFsmError::ParseError(e.to_string()))?;
         // println!("DOLLAR STR: {:?}", &varsubst);
         {
             use varsubst::ParseChunk;
@@ -382,10 +397,12 @@ impl TextFSMParser {
                             expanded_rule_match.push_str(&v_out);
                             match_variables.push(v.to_string());
                         }
-                        None => panic!(
-                            "Can not find variable '{}' while parsing rule_match '{}'",
-                            &v, &rule.rule_match
-                        ),
+                        None => {
+                            return Err(TextFsmError::ParseError(format!(
+                                "Can not find variable '{}' while parsing rule_match '{}'",
+                                &v, &rule.rule_match
+                            )))
+                        }
                     },
                 }
             }
@@ -415,16 +432,21 @@ impl TextFSMParser {
                                         println!("WARNING: repeat quantifier on a lookahead, lookbehind or other zero-width item");
                                         expanded_rule_match.remove(char_index.0);
                                     } else {
-                                        panic!("Can not fix up regex!");
+                                        return Err(TextFsmError::ParseError(
+                                            "Can not fix up regex!".to_string(),
+                                        ));
                                     }
                                 }
                                 e => {
-                                    panic!("Error: {:?}", &e);
+                                    return Err(TextFsmError::ParseError(format!(
+                                        "Error: {:?}",
+                                        &e
+                                    )));
                                 }
                             }
                         }
                         x => {
-                            panic!("Error: {:?}", &x);
+                            return Err(TextFsmError::ParseError(format!("Error: {:?}", &x)));
                         }
                     }
                 };
@@ -447,7 +469,7 @@ impl TextFSMParser {
     pub fn parse_and_compile_state_definition(
         pair: &Pair<'_, Rule>,
         values: &HashMap<String, ValueDefinition>,
-    ) -> Result<StateCompiled, String> {
+    ) -> Result<StateCompiled> {
         let mut name: Option<String> = None;
         // Self::print_pair(20, pair);
         let mut rules: Vec<StateRuleCompiled> = vec![];
@@ -462,7 +484,7 @@ impl TextFSMParser {
                     for pair in pair.clone().into_inner() {
                         let rule = Self::parse_state_rule(&pair);
                         trace!("PARSED RULE [{:?}]: {:#?}", &name, &rule);
-                        let compiled_rule = Self::compile_state_rule(&rule, values).unwrap();
+                        let compiled_rule = Self::compile_state_rule(&rule, values)?;
                         rules.push(compiled_rule);
                     }
                 }
@@ -471,11 +493,15 @@ impl TextFSMParser {
                     println!("{}state def Rule:    {:?}", spaces, pair.as_rule());
                     println!("{}Span:    {:?}", spaces, pair.as_span());
                     println!("{}Text:    {}", spaces, pair.as_str());
-                    panic!("Rule not supported in state definition: {:?}", &x);
+                    return Err(TextFsmError::ParseError(format!(
+                        "Rule not supported in state definition: {:?}",
+                        &x
+                    )));
                 }
             }
         }
-        let name = name.expect("internal error - state must have a name");
+        let name =
+            name.ok_or_else(|| TextFsmError::InternalError("state must have a name".to_string()))?;
         Ok(StateCompiled { name, rules })
     }
     /*
@@ -494,11 +520,10 @@ impl TextFSMParser {
         }
     }
     */
-    pub fn parse_value_definition(pair: &Pair<'_, Rule>) -> Result<ValueDefinition, String> {
+    pub fn parse_value_definition(pair: &Pair<'_, Rule>) -> Result<ValueDefinition> {
         // println!("value definition");
         let mut name: Option<String> = None;
         let mut regex_pattern: Option<String> = None;
-        let mut regex_val: Option<Regex> = None;
         let mut options: Option<String> = None;
         let mut is_filldown = false;
         let mut is_key = false;
@@ -511,11 +536,13 @@ impl TextFSMParser {
                 Rule::options => options = Some(p.as_str().to_string()),
                 Rule::identifier => name = Some(p.as_str().to_string()),
                 Rule::regex_pattern => {
-                    regex_val = Regex::new(p.as_str()).ok();
                     regex_pattern = Some(p.as_str().to_string());
                 }
                 x => {
-                    panic!("Rule {:?} in value definition", x);
+                    return Err(TextFsmError::ParseError(format!(
+                        "Rule {:?} in value definition",
+                        x
+                    )));
                 }
             }
             // Self::print_pair(indent + 2, &p);
@@ -530,7 +557,12 @@ impl TextFSMParser {
                         "Required" => is_required = true,
                         "List" => is_list = true,
                         "Fillup" => is_fillup = true,
-                        x => panic!("Unknown option {:?}", &x),
+                        x => {
+                            return Err(TextFsmError::ParseError(format!(
+                                "Unknown option {:?}",
+                                &x
+                            )))
+                        }
                     }
                 }
             }
@@ -553,15 +585,15 @@ impl TextFSMParser {
                 options,
             })
         } else {
-            Err(format!(
-                "Error parsing value: {:?} {:?} {:?} [ {:?} ]",
-                &name, &regex_pattern, &regex_val, &options
-            ))
+            Err(TextFsmError::ParseError(format!(
+                "Error parsing value: {:?} {:?} [ {:?} ]",
+                &name, &regex_pattern, &options
+            )))
         }
     }
     pub fn parse_value_defs(
         pair: &Pair<'_, Rule>,
-    ) -> Result<(HashMap<String, ValueDefinition>, Vec<String>), String> {
+    ) -> Result<(HashMap<String, ValueDefinition>, Vec<String>)> {
         let mut vals = HashMap::new();
         let mut mandatory_values: Vec<String> = vec![];
         for pair in pair.clone().into_inner() {
@@ -575,9 +607,9 @@ impl TextFSMParser {
         }
         Ok((vals, mandatory_values))
     }
-    pub fn from_file(fname: &str) -> Self {
+    pub fn from_file(fname: &str) -> Result<Self> {
         // println!("Path: {}", &fname);
-        let template = std::fs::read_to_string(&fname).expect("File read failed");
+        let template = std::fs::read_to_string(&fname)?;
         // pad with a newline, because dealing with a missing one within grammar is a PITA
         let template = format!("{}\n\n\n", template);
 
@@ -595,7 +627,7 @@ impl TextFSMParser {
             },
         };
 
-        let compiled_eof_rule = Self::compile_state_rule(&eof_rule, &values).unwrap();
+        let compiled_eof_rule = Self::compile_state_rule(&eof_rule, &values)?;
 
         let eof_state = StateCompiled {
             name: format!("EOF"),
@@ -608,7 +640,7 @@ impl TextFSMParser {
                 for pair in pairs.clone() {
                     match pair.as_rule() {
                         Rule::value_definitions => {
-                            (values, mandatory_values) = Self::parse_value_defs(&pair).unwrap();
+                            (values, mandatory_values) = Self::parse_value_defs(&pair)?;
                         }
                         Rule::state_definitions => {
                             for pair in pair.clone().into_inner() {
@@ -618,21 +650,23 @@ impl TextFSMParser {
                                         Self::_log_pair(0, &pair);
                                         let state = Self::parse_and_compile_state_definition(
                                             &pair, &values,
-                                        )
-                                        .unwrap();
+                                        )?;
                                         trace!("STATE DEFINITION END: {:?}", &state);
                                         if &state.name != "EOF" {
                                             if states.get(&state.name).is_some() {
-                                                panic!(
+                                                return Err(TextFsmError::StateError(format!(
                                                     "State {} already defined in the file!",
                                                     &state.name
-                                                );
+                                                )));
                                             }
                                         }
                                         states.insert(state.name.clone(), state);
                                     }
                                     x => {
-                                        panic!("state definition rule {:?} not supported", x);
+                                        return Err(TextFsmError::ParseError(format!(
+                                            "state definition rule {:?} not supported",
+                                            x
+                                        )));
                                     }
                                 }
                             }
@@ -641,7 +675,10 @@ impl TextFSMParser {
                             seen_eoi = true;
                         }
                         x => {
-                            panic!("RULE {:?} not supported", &x);
+                            return Err(TextFsmError::ParseError(format!(
+                                "RULE {:?} not supported",
+                                &x
+                            )));
                         }
                     }
                     // Self::process_pair(0, &pair);
@@ -652,35 +689,44 @@ impl TextFSMParser {
                 }
 
                 // FIXME: check that the "Start" state exists
-                return TextFSMParser {
+                return Ok(TextFSMParser {
                     values,
                     mandatory_values,
                     states,
-                };
+                });
             }
-            Err(e) => panic!("file {} Error: {}", &fname, e),
+            Err(e) => {
+                return Err(TextFsmError::ParseError(format!(
+                    "file {} Error: {}",
+                    &fname, e
+                )))
+            }
         }
     }
 }
 
 impl TextFSM {
-    pub fn from_file(fname: &str) -> Self {
-        let parser = TextFSMParser::from_file(fname);
+    pub fn from_file(fname: &str) -> Result<Self> {
+        let parser = TextFSMParser::from_file(fname)?;
         let curr_state = format!("Start");
-        TextFSM {
+        Ok(TextFSM {
             parser,
             curr_state,
             ..Default::default()
-        }
+        })
     }
 
-    pub fn set_curr_state(&mut self, state_name: &str) {
+    pub fn set_curr_state(&mut self, state_name: &str) -> Result<()> {
         if state_name != "End" {
             if self.parser.states.get(state_name).is_none() {
-                panic!("State '{}' not found!", state_name);
+                return Err(TextFsmError::StateError(format!(
+                    "State '{}' not found!",
+                    state_name
+                )));
             }
         }
         self.curr_state = state_name.to_string();
+        Ok(())
     }
 
     pub fn is_key_value(&self, value_name: &str) -> Option<bool> {
@@ -723,10 +769,12 @@ impl TextFSM {
         name: &str,
         maybe_value: Option<String>,
         aline: &str,
-    ) {
+    ) -> Result<()> {
         let ins_value = if let Some(value) = maybe_value {
             trace!("{} SET VAR '{}' = '{}'", &typ, &name, &value.as_str());
-            if self.is_list_value(name).expect("is list?") {
+            if self.is_list_value(name).ok_or_else(|| {
+                TextFsmError::InternalError(format!("is_list_value for {} failed", name))
+            })? {
                 Value::List(vec![value.clone()])
             } else {
                 Value::Single(value.clone())
@@ -736,7 +784,9 @@ impl TextFSM {
                 "WARNING: {} Could not capture '{}' from string '{}'",
                 typ, name, aline
             );
-            if self.is_list_value(name).expect("is list?") {
+            if self.is_list_value(name).ok_or_else(|| {
+                TextFsmError::InternalError(format!("is_list_value for {} failed", name))
+            })? {
                 Value::List(vec![format!("None")])
             } else {
                 Value::Single(format!(""))
@@ -745,7 +795,9 @@ impl TextFSM {
         curr_record
             .fields
             .insert(name.to_string(), ins_value.clone());
-        if self.is_key_value(name).unwrap() {
+        if self.is_key_value(name).ok_or_else(|| {
+            TextFsmError::InternalError(format!("is_key_value for {} failed", name))
+        })? {
             curr_record.record_key = if let Some(k) = curr_record.record_key.clone() {
                 Some(format!("{}/{:?}", &k, &ins_value))
             } else {
@@ -753,14 +805,17 @@ impl TextFSM {
             };
             trace!("RECORD KEY: '{:?}'", &curr_record.record_key);
         }
-        if self.is_filldown_value(name).unwrap() {
+        if self.is_filldown_value(name).ok_or_else(|| {
+            TextFsmError::InternalError(format!("is_filldown_value for {} failed", name))
+        })? {
             filldown_record
                 .fields
                 .insert(name.to_string(), ins_value.clone());
         }
+        Ok(())
     }
 
-    pub fn parse_line(&mut self, aline: &str) -> Option<NextState> {
+    pub fn parse_line(&mut self, aline: &str) -> Result<Option<NextState>> {
         let maybe_next_state: Option<NextState> = None;
 
         let curr_state = self.curr_state.clone();
@@ -787,7 +842,7 @@ impl TextFSM {
                                     name,
                                     maybe_value,
                                     aline,
-                                );
+                                )?;
                             }
                             capture_matched = true;
                         }
@@ -806,23 +861,33 @@ impl TextFSM {
                                         name,
                                         maybe_value,
                                         aline,
-                                    );
+                                    )?;
                                 } else {
-                                    panic!("FANCY caps not ok");
+                                    return Err(TextFsmError::ParseError(
+                                        "FANCY caps not ok".to_string(),
+                                    ));
                                 }
                             }
                             capture_matched = true;
                         }
                     }
                     x => {
-                        panic!("Regex {:?} on rule is not supported", &x);
+                        return Err(TextFsmError::ParseError(format!(
+                            "Regex {:?} on rule is not supported",
+                            &x
+                        )));
                     }
                 }
                 if capture_matched {
                     trace!("TMP_REC: {:?}", &tmp_datarec);
                     trace!("TMP_FILLDOWN: {:?}", &tmp_filldown_rec);
                     for (name, v) in tmp_datarec.fields {
-                        if self.is_fillup_value(&name).unwrap() {
+                        if self.is_fillup_value(&name).ok_or_else(|| {
+                            TextFsmError::InternalError(format!(
+                                "is_fillup_value for {} failed",
+                                name
+                            ))
+                        })? {
                             let name = &name;
                             for fillup_record in self.records.iter_mut().rev() {
                                 if let Some(ref oldval) = fillup_record.fields.get(name) {
@@ -832,8 +897,10 @@ impl TextFSM {
                                                 break;
                                             }
                                         }
-                                        Value::List(lst) => {
-                                            panic!("fillup not supported for lists!");
+                                        Value::List(_lst) => {
+                                            return Err(TextFsmError::ParseError(
+                                                "fillup not supported for lists!".to_string(),
+                                            ));
                                         }
                                     }
                                 }
@@ -866,16 +933,19 @@ impl TextFSM {
                         }
                         if number_of_values > 0 {
                             if mandatory_count == self.parser.mandatory_values.len() {
-                                let mut new_rec: DataRecord = Default::default();
-                                /* fill the record from filldown */
-                                new_rec = self.filldown_record.clone();
+                                let mut new_rec: DataRecord = self.filldown_record.clone();
                                 /* swap with the current record */
                                 std::mem::swap(&mut new_rec, &mut self.curr_record);
                                 // Set the values that aren't set yet - FIXME: this feature should be
                                 // possible to be disabled as "" and nothing are very different things.
                                 for (_k, v) in &self.parser.values {
                                     if new_rec.get(&v.name).is_none() {
-                                        if self.is_list_value(&v.name).expect("is list?") {
+                                        if self.is_list_value(&v.name).ok_or_else(|| {
+                                            TextFsmError::InternalError(format!(
+                                                "is_list_value for {} failed",
+                                                v.name
+                                            ))
+                                        })? {
                                             new_rec
                                                 .fields
                                                 .insert(v.name.clone(), Value::List(vec![]));
@@ -895,11 +965,16 @@ impl TextFSM {
                             trace!("RECORD: record is empty, not dumping");
                         }
                     }
-                    RecordAction::NoRecord => {}
+                    RecordAction::NoRecord => {} // Do nothing
                     RecordAction::Clear => {
                         let mut rem_keys: Vec<String> = vec![];
                         for (ref k, ref _v) in self.curr_record.iter() {
-                            if !self.is_filldown_value(&k).expect("Variable does not exist") {
+                            if !self.is_filldown_value(&k).ok_or_else(|| {
+                                TextFsmError::InternalError(format!(
+                                    "is_filldown_value for {} failed",
+                                    k
+                                ))
+                            })? {
                                 rem_keys.push(k.to_string());
                             }
                         }
@@ -914,14 +989,17 @@ impl TextFSM {
                     }
                 }
                 match transition.line_action {
-                    LineAction::Next(x) => return x,
-                    LineAction::Continue => {}
+                    LineAction::Next(x) => return Ok(x),
+                    LineAction::Continue => {} // Do nothing
                 }
             }
         } else {
-            panic!("State {} not found!", &self.curr_state);
+            return Err(TextFsmError::StateError(format!(
+                "State {} not found!",
+                &self.curr_state
+            )));
         }
-        maybe_next_state
+        Ok(maybe_next_state)
     }
 
     pub fn lowercase_keys(src: &Vec<DataRecord>) -> Vec<DataRecord> {
@@ -943,17 +1021,20 @@ impl TextFSM {
         &mut self,
         fname: &str,
         conversion: Option<DataRecordConversion>,
-    ) -> Vec<DataRecord> {
-        let input = std::fs::read_to_string(&fname).expect("Data file read failed");
-        for (lineno, aline) in input.lines().enumerate() {
-            debug!("LINE:#{}:'{}'", lineno + 1, &aline);
-            if let Some(next_state) = self.parse_line(&aline) {
+    ) -> Result<Vec<DataRecord>> {
+        let input = std::fs::read_to_string(&fname)?;
+        for (_lineno, aline) in input.lines().enumerate() {
+            debug!("LINE:#{}: '{}'", _lineno + 1, &aline);
+            if let Some(next_state) = self.parse_line(&aline)? {
                 match next_state {
                     NextState::Error(maybe_msg) => {
-                        panic!("Error state reached! msg: {:?}", &maybe_msg);
+                        return Err(TextFsmError::StateError(format!(
+                            "Error state reached! msg: {:?}",
+                            &maybe_msg
+                        )));
                     }
                     NextState::NamedState(name) => {
-                        self.set_curr_state(&name);
+                        self.set_curr_state(&name)?;
                     }
                 }
             }
@@ -962,14 +1043,14 @@ impl TextFSM {
             }
         }
         if &self.curr_state != "End" {
-            self.set_curr_state("EOF");
-            self.parse_line("");
+            self.set_curr_state("EOF")?;
+            self.parse_line("")?;
             // FIXME: Can EOF state transition into something else ? Presumably not.
-            self.set_curr_state("End");
+            self.set_curr_state("End")?;
         }
         match conversion {
-            None => self.records.clone(),
-            Some(DataRecordConversion::LowercaseKeys) => Self::lowercase_keys(&self.records),
+            None => Ok(self.records.clone()),
+            Some(DataRecordConversion::LowercaseKeys) => Ok(Self::lowercase_keys(&self.records)),
         }
     }
 }

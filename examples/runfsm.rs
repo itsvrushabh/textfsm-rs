@@ -7,7 +7,7 @@ fn main() {
     let data_name = std::env::args()
         .nth(2)
         .expect("Missing TextFSM data file name");
-    let mut textfsm = TextFSM::from_file(&template_name);
-    let result = textfsm.parse_file(&data_name);
+    let mut textfsm = TextFSM::from_file(&template_name).unwrap();
+    let result = textfsm.parse_file(&data_name, None);
     println!("Records: {:?}", &result);
 }
