@@ -85,7 +85,7 @@ fn verify(
     }
 }
 
-fn collect_file_names(template_dir: &str, extension: &str) -> Result<Vec<String>, std::io::Error> {
+fn collect_file_names(template_dir: &str, extension: &str) -> Result<Vec<String>> {
     let mut base_names = Vec::new();
 
     for entry in std::fs::read_dir(template_dir)? {
@@ -102,7 +102,7 @@ fn collect_file_names(template_dir: &str, extension: &str) -> Result<Vec<String>
     Ok(base_names)
 }
 
-fn collect_bare_directories(base_dir: &str) -> Result<Vec<String>, std::io::Error> {
+fn collect_bare_directories(base_dir: &str) -> Result<Vec<String>> {
     let mut dir_names = Vec::new();
 
     for entry in std::fs::read_dir(base_dir)? {
@@ -194,7 +194,7 @@ fn main() {
                             &cli_cmd, &index_dir, &row, &data_file, &yaml_file
                         );
                         verify_count += 1;
-                        match verify(&index_dir, &row, &data_file, &yaml_file) {
+                        match verify(&index_dir, &row, &data_file, &yaml_file).unwrap() {
                             VerifyResult::CouldNotLoadYaml => {
                                 result_no_yaml_count += 1;
                             }

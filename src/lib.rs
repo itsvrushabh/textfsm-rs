@@ -157,7 +157,6 @@ pub enum Value {
     List(Vec<String>),
 }
 
-use std::fmt;
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
