@@ -7,7 +7,7 @@ license = "Apache-2.0"
 repository = "https://github.com/itsvrushabh/textfsm-rs"
 authors = ["Rust User <itsvrushabh@gmail.com>"]
 keywords = ["textfsm", "parser", "network", "automation"]
-categories = ["network", "parser"]
+categories = ["network-programming", "parsing"]
 
 [dependencies]
 pest = "2.8.5"
