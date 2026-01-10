@@ -31,3 +31,21 @@ ntc-templates/tests/cisco_ios/show_module/cisco_ios_show_module2.raw
 ntc-templates/tests/huawei_smartax/display_ont_info_0/huawei_smartax_display_ont_info_fsp_4.raw
 ntc-templates/tests/huawei_smartax/display_ont_info_summary_ont/huawei_smartax_display_ont_info_summary_ont_5.raw
 ```
+
+## Updates
+
+### Dependencies
+
+Updated `Cargo.toml` to use specific versions for all dependencies, replacing wildcard versions. This improves build stability and predictability. `thiserror` was also added for enhanced error handling.
+
+### Error Handling
+
+Refactored error handling to use `Result` types instead of panicking. Introduced a custom `TextFsmError` to provide more specific and robust error information throughout the library.
+
+### Testing
+
+Added comprehensive end-to-end tests to improve test coverage. The test suite now includes a scenario that loads a template, parses a data file, and validates the extracted output. The test file structure was also reorganized for better maintainability.
+
+### Logging
+
+Replaced direct `println!` macros with the `log` crate for more flexible and configurable logging. This allows for better control over log levels and output destinations.
