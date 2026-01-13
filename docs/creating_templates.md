@@ -21,9 +21,9 @@ Value [Option[,Option...]] Name (Regex)
 | :--- | :--- |
 | `Key` | Marks this value as part of the unique identifier (primary key) for the record. |
 | `Required` | The record will only be saved if this value has been matched. |
-| `Filldown` | Once matched, the value is copied to subsequent records until changed (useful for headers like "VLAN ID"). |
-| `Fillup` | The value is copied *upwards* to previous records in the current block (less common). |
-| `List` | Allows multiple matches for this value within a single record (e.g., multiple IP addresses per interface). |
+| `Filldown` | The previously matched value is retained for subsequent records (unless explicitly cleared or matched again). |
+| `Fillup` | The value is copied *upwards* to previous records in the current block (less common). Not compatible with `Required` or `List`. |
+| `List` | Allows multiple matches for this value within a single record. Appended on each match. |
 
 **Examples:**
 ```textfsm
@@ -34,12 +34,13 @@ Value Filldown Interface (\S+)
 
 ## 2. State Definitions
 
-After values are defined, the template must define at least one state: `Start`.
+After values are defined, the template must define at least one state: `Start`. Each state definition is separated by a blank line.
 
 **Syntax:**
 ```textfsm
 StateName
-  ^RuleRegex -> Action
+ ^RuleRegex [-> Action]
+ ^RuleRegex [-> Action]
 ```
 
 -   **StateName**: A label for a block of rules. The parser starts in the `Start` state.
@@ -48,28 +49,46 @@ StateName
 
 ### Rules
 
-Rules are processed in order. If a line matches a rule, the Action is executed. If no action is specified, `Next` is implied (move to next line).
+Rules are processed in order. If a line matches a rule, the Action is executed. If no action is specified, `Next.NoRecord` is implied (move to next line).
 
 **Syntax:** `^Regex [-> Action]`
 
--   Use `${ValueName}` in the regex to capture data into a defined Value.
--   The regex usually starts with `^` to match the start of the line.
+-   The regex must start with `^` to match the start of the line (TextFSM convention, enforced as a reminder).
+-   Use `${ValueName}` (preferred) or `$ValueName` in the regex to capture data into a defined Value.
+-   Use `$$` to match a literal `$` (end of line matching usually handled by regex anchor `$`).
 
 ### Actions
 
-Actions control the flow of the state machine and record generation.
+Actions control the flow of the state machine and record generation. They are delimited by `->`.
 
-**Format:** `Action` or `NextState` or `Action.NextState`
+**Format:** `A.B C` or `Action` or `Action.NextState`
 
-| Action | Description |
+Where:
+-   **A**: Line Action
+-   **B**: Record Action
+-   **C**: New State
+
+| Line Action (A) | Description |
 | :--- | :--- |
-| `Next` | (Default) Finish with the current line and read the next line of input. |
-| `Continue` | Keep processing the *current* line with subsequent rules in the same state. |
-| `Record` | Save the current values as a `DataRecord`, clear non-Filldown values, and start a new record. |
-| `NoRecord` | Do not save the record (often used with state transitions). |
-| `Clear` | Clear current values (except Filldown). |
+| `Next` | (Default) Finish with the current input line, read the next line, and start matching from the top of the current state. |
+| `Continue` | Retain the current line. Continue matching subsequent rules in the current state. Value assignments still occur. |
+
+| Record Action (B) | Description |
+| :--- | :--- |
+| `NoRecord` | (Default) Do nothing. |
+| `Record` | Save the current values as a `DataRecord`. Non-Filldown values are cleared. **Note:** No record is output if any `Required` values are unassigned. |
+| `Clear` | Clear non-Filldown values. |
 | `Clearall` | Clear *all* values (including Filldown). |
-| `StateName` | Transition to a new state definition (e.g., `Start`, `ParseInterface`, `EOF`). |
+
+| New State (C) | Description |
+| :--- | :--- |
+| `StateName` | Transition to a new state definition (e.g., `Start`, `ParseInterface`). Next line is read (unless `Continue` was used, though `Continue` with state transition is not allowed to prevent loops). |
+| `Error ["msg"]` | Terminate processing immediately. Discard all records. Raise an exception with optional message. |
+
+**Implicit Defaults:**
+-   If no action is specified: `Next.NoRecord`
+-   `Next` implies `Next.NoRecord`
+-   `Record` implies `Next.Record`
 
 **Examples:**
 ```textfsm
@@ -79,14 +98,19 @@ Actions control the flow of the state machine and record generation.
   # Capture Interface and transition to ParseInterface state
   ^Interface ${Interface} -> ParseInterface
 
-  # Record the current data and continue parsing
-  ^  IP Address: ${IpAddress} -> Record
+  # Record the current data and continue parsing the SAME line
+  # (Useful if one line contains multiple records or data points)
+  ^  IP Address: ${IpAddress} -> Record Continue
+
+  # Error if we see something unexpected
+  ^% Invalid input -> Error "Unexpected Input"
 ```
 
 ## 3. Special States
 
 -   **`Start`**: Mandatory. The parser begins here.
--   **`EOF`**: Optional. Implicitly called when input ends. Useful for saving the last record if it wasn't triggered by a `Record` action.
+-   **`EOF`**: Optional. Implicitly called when input ends. Default behavior is `^.* -> Record` (save the last record). Define an empty `EOF` state to suppress this.
+-   **`End`**: Reserved state. Terminates processing immediately (does not execute `EOF` state rules).
 
 ## 4. Complete Example
 
