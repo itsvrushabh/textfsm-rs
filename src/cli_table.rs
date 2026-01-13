@@ -47,7 +47,7 @@ pub struct CliTableRow {
 }
 
 impl ParsedCliTable {
-    fn example(fname: &str) -> Result<Vec<CliTableRow>> {
+    fn example(fname: &Path) -> Result<Vec<CliTableRow>> {
         use std::io::BufReader;
         let file = std::fs::File::open(fname)?;
         let reader = BufReader::new(file);
@@ -106,11 +106,12 @@ impl ParsedCliTable {
     }
 
     /// Loads and parses a CLI table index from a file.
-    pub fn from_file(fname: &str) -> Result<Self> {
-        debug!("Loading cli table from {}", &fname);
-        let rows = Self::example(fname)?;
+    pub fn from_file<P: AsRef<Path>>(fname: P) -> Result<Self> {
+        let path = fname.as_ref();
+        debug!("Loading cli table from {}", path.display());
+        let rows = Self::example(path)?;
         Ok(ParsedCliTable {
-            fname: fname.to_string(),
+            fname: path.to_string_lossy().into_owned(),
             rows,
         })
     }
@@ -193,7 +194,7 @@ impl CliTable {
     }
 
     /// Loads a CLI table from an index file and compiles all command regexes.
-    pub fn from_file(fname: &str) -> Result<Self> {
+    pub fn from_file<P: AsRef<Path>>(fname: P) -> Result<Self> {
         let parsed_cli_table = ParsedCliTable::from_file(fname)?;
         let tables = vec![parsed_cli_table];
         let mut platform_regex_rules: HashMap<String, Vec<CliTableRegexRule>> = Default::default();

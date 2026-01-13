@@ -1,6 +1,6 @@
 pub mod error;
 pub use error::{Result, TextFsmError};
-use log::{debug, error, trace};
+use log::{debug, trace, warn};
 pub use pest::iterators::Pair;
 pub use pest::Parser;
 use pest_derive::Parser;
@@ -656,9 +656,9 @@ impl TextFSMParser {
     }
 
     /// Parses and compiles a TextFSM template from a file.
-    pub fn from_file(fname: &str) -> Result<Self> {
-        // println!("Path: {}", &fname);
-        let template = std::fs::read_to_string(fname)?;
+    pub fn from_file<P: AsRef<std::path::Path>>(fname: P) -> Result<Self> {
+        let path = fname.as_ref();
+        let template = std::fs::read_to_string(path)?;
         // pad with a newline, because dealing with a missing one within grammar is a PITA
         let template = format!("{}\n\n\n", template);
 
@@ -750,7 +750,8 @@ impl TextFSMParser {
             }
             Err(e) => Err(TextFsmError::ParseError(format!(
                 "file {} Error: {}",
-                &fname, e
+                path.display(),
+                e
             ))),
         }
     }
@@ -758,7 +759,7 @@ impl TextFSMParser {
 
 impl TextFSM {
     /// Creates a new `TextFSM` instance from a template file.
-    pub fn from_file(fname: &str) -> Result<Self> {
+    pub fn from_file<P: AsRef<std::path::Path>>(fname: P) -> Result<Self> {
         let parser = TextFSMParser::from_file(fname)?;
         let curr_state = "Start".to_string();
         Ok(TextFSM {
@@ -824,7 +825,7 @@ impl TextFSM {
                 Value::Single(value.clone())
             }
         } else {
-            error!(
+            warn!(
                 "WARNING: Could not capture '{}' from string '{}'",
                 name, aline
             );
@@ -1092,9 +1093,9 @@ impl TextFSM {
     /// # Arguments
     /// * `fname` - Path to the data file to parse.
     /// * `conversion` - Optional transformation to apply to the results.
-    pub fn parse_file(
+    pub fn parse_file<P: AsRef<std::path::Path>>(
         &mut self,
-        fname: &str,
+        fname: P,
         conversion: Option<DataRecordConversion>,
     ) -> Result<Vec<DataRecord>> {
         let input = std::fs::read_to_string(fname)?;
