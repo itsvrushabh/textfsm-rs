@@ -74,6 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ## Documentation
 
 *   [Usage Guide](docs/usage.md) - Detailed examples and API usage.
+*   [Creating Templates](docs/creating_templates.md) - Syntax guide for writing .textfsm files.
 *   [Architecture](docs/architecture.md) - Deep dive into internal implementation and optimizations.
 
 ## Contributing
