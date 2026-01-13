@@ -733,20 +733,19 @@ impl TextFSM {
         self.parser.values.get(value_name).map(|val| val.is_list)
     }
 
-    pub fn insert_value(
+    pub fn insert_value_optimized(
         &self,
         typ: &str,
         curr_record: &mut DataRecord,
         filldown_record: &mut DataRecord,
         name: &str,
+        value_def: &ValueDefinition,
         maybe_value: Option<String>,
         aline: &str,
     ) -> Result<()> {
         let ins_value = if let Some(value) = maybe_value {
             trace!("{} SET VAR '{}' = '{}'", &typ, &name, &value.as_str());
-            if self.is_list_value(name).ok_or_else(|| {
-                TextFsmError::InternalError(format!("is_list_value for {} failed", name))
-            })? {
+            if value_def.is_list {
                 Value::List(vec![value.clone()])
             } else {
                 Value::Single(value.clone())
@@ -756,9 +755,7 @@ impl TextFSM {
                 "WARNING: {} Could not capture '{}' from string '{}'",
                 typ, name, aline
             );
-            if self.is_list_value(name).ok_or_else(|| {
-                TextFsmError::InternalError(format!("is_list_value for {} failed", name))
-            })? {
+            if value_def.is_list {
                 Value::List(vec![format!("None")])
             } else {
                 Value::Single(String::new())
@@ -767,9 +764,7 @@ impl TextFSM {
         curr_record
             .fields
             .insert(name.to_string(), ins_value.clone());
-        if self.is_key_value(name).ok_or_else(|| {
-            TextFsmError::InternalError(format!("is_key_value for {} failed", name))
-        })? {
+        if value_def.is_key {
             curr_record.record_key = if let Some(k) = curr_record.record_key.clone() {
                 Some(format!("{}/{:?}", &k, &ins_value))
             } else {
@@ -777,12 +772,10 @@ impl TextFSM {
             };
             trace!("RECORD KEY: '{:?}'", &curr_record.record_key);
         }
-        if self.is_filldown_value(name).ok_or_else(|| {
-            TextFsmError::InternalError(format!("is_filldown_value for {} failed", name))
-        })? {
+        if value_def.is_filldown {
             filldown_record
                 .fields
-                .insert(name.to_string(), ins_value.clone());
+                .insert(name.to_string(), ins_value);
         }
         Ok(())
     }
@@ -790,9 +783,20 @@ impl TextFSM {
     pub fn parse_line(&mut self, aline: &str) -> Result<Option<NextState>> {
         let maybe_next_state: Option<NextState> = None;
 
-        let curr_state = self.curr_state.clone();
+        // We can't hold a reference to `self.parser` while mutating `self` fields.
+        // So we extract what we need or restructure.
+        // Since `self.parser` is immutable here, and we mutate `self.curr_record`, `self.records`, `self.curr_state`.
+        // The issue is `self.curr_state` string is in `self`.
+        
+        // Let's get the state definition.
+        // We can't simple take `&self.parser.states` because `self` is borrowed mutably for the whole function?
+        // No, `parse_line` takes `&mut self`.
+        // We can reborrow.
+        
+        let state_name = &self.curr_state;
+        let state_def = self.parser.states.get(state_name);
 
-        if let Some(ref curr_state) = self.parser.states.get(&curr_state) {
+        if let Some(curr_state) = state_def {
             trace!("CURR STATE: {:?}", &curr_state);
             for rule in &curr_state.rules {
                 let mut transition = RuleTransition {
@@ -808,12 +812,17 @@ impl TextFSM {
                         debug!("RULE(CLASSIC REGEX): {:?}", &rule);
                         for caps in rx.captures_iter(aline) {
                             for name in &rule.match_variables {
+                                let value_def = self.parser.values.get(name).ok_or_else(|| {
+                                    TextFsmError::InternalError(format!("Value definition for {} not found", name))
+                                })?;
+                                
                                 let maybe_value = caps.name(name).map(|x| x.as_str().to_string());
-                                self.insert_value(
+                                self.insert_value_optimized(
                                     "CLASSIC",
                                     &mut tmp_datarec,
                                     &mut tmp_filldown_rec,
                                     name,
+                                    value_def,
                                     maybe_value,
                                     aline,
                                 )?;
@@ -825,14 +834,19 @@ impl TextFSM {
                         debug!("RULE(FANCY REGEX): {:?}", &rule);
                         for caps in rx.captures_iter(aline) {
                             for name in &rule.match_variables {
+                                let value_def = self.parser.values.get(name).ok_or_else(|| {
+                                    TextFsmError::InternalError(format!("Value definition for {} not found", name))
+                                })?;
+
                                 if let Ok(ref caps) = caps {
                                     let maybe_value =
                                         caps.name(name).map(|x| x.as_str().to_string());
-                                    self.insert_value(
+                                    self.insert_value_optimized(
                                         "FANCY",
                                         &mut tmp_datarec,
                                         &mut tmp_filldown_rec,
                                         name,
+                                        value_def,
                                         maybe_value,
                                         aline,
                                     )?;
