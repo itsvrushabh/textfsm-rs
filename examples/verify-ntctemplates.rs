@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use textfsm_rs::*;
 
 #[derive(Serialize, Deserialize)]
@@ -53,7 +52,7 @@ fn verify(template_name: &str, data_name: &str, yaml_verify_name: &str) -> Resul
         }
     } else {
         println!("WARNING: YAML did not load correctly!");
-        panic!("Could not load YAML");
+        Ok(VerifyResult::CouldNotLoadYaml)
     }
 }
 
@@ -92,14 +91,6 @@ fn collect_bare_directories(base_dir: &str) -> Result<Vec<String>> {
     Ok(dir_names)
 }
 
-struct TestRecord {
-    template_name: String,
-    test_family_name: String,
-    test_set_name: String,
-    test_data_file_name: String,
-    test_yaml_file_name: String,
-}
-
 fn main() {
     let root_path = std::env::args()
         .nth(1)
@@ -117,8 +108,6 @@ fn main() {
         collect_bare_directories(&tests_dir).expect("Could not scan tests directory");
     println!("{} template names found", template_names.len());
     println!("{} test families found", test_family_names.len());
-
-    let mut all_tests: Vec<TestRecord> = vec![];
 
     let mut verify_count = 0;
     let mut result_no_yaml_count = 0;

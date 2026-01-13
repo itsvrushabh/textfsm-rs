@@ -71,58 +71,53 @@ impl DataRecord {
     }
 
     pub fn insert(&mut self, name: String, value: String) {
-        if self.fields.contains_key(&name) {
-            let mut existing = self.fields.remove(&name);
-            match existing {
-                None => {
-                    panic!("internal error");
-                }
-                Some(Value::Single(oldval)) => {
-                    let newval = Value::List(vec![oldval, value]);
-                    self.fields.insert(name, newval);
-                }
-                Some(Value::List(ref mut oldlist)) => {
-                    oldlist.push(value);
-                    self.fields.insert(name, existing.unwrap());
+        use std::collections::hash_map::Entry;
+        match self.fields.entry(name) {
+            Entry::Occupied(mut entry) => {
+                let old_value = entry.get_mut();
+                if let Value::Single(old_str) = old_value {
+                    let s = std::mem::take(old_str);
+                    *old_value = Value::List(vec![s, value]);
+                } else if let Value::List(list) = old_value {
+                    list.push(value);
                 }
             }
-        } else {
-            self.fields.insert(name, Value::Single(value));
+            Entry::Vacant(entry) => {
+                entry.insert(Value::Single(value));
+            }
         }
     }
 
     pub fn append_value(&mut self, name: String, value: Value) {
-        if self.fields.contains_key(&name) {
-            let mut existing = self.fields.remove(&name);
-            match existing {
-                None => {
-                    panic!("internal error");
+        use std::collections::hash_map::Entry;
+        match self.fields.entry(name.clone()) {
+            Entry::Occupied(mut entry) => {
+                let old_value = entry.get_mut();
+                match old_value {
+                    Value::Single(old_str_ref) => match value {
+                        Value::Single(val) => {
+                            *old_value = Value::Single(val);
+                        }
+                        Value::List(lst) => {
+                            panic!(
+                                "can not append list {:?} to single {:?} in var {}",
+                                &lst, &old_str_ref, &name
+                            );
+                        }
+                    },
+                    Value::List(list) => match value {
+                        Value::Single(val) => {
+                            list.push(val);
+                        }
+                        Value::List(mut lst) => {
+                            list.append(&mut lst);
+                        }
+                    },
                 }
-                Some(Value::Single(oldval)) => match value {
-                    Value::Single(val) => {
-                        let newval = Value::Single(val);
-                        self.fields.insert(name, newval);
-                    }
-                    Value::List(lst) => {
-                        panic!(
-                            "can not append list {:?} to single {:?} in var {}",
-                            &lst, &oldval, &name
-                        );
-                    }
-                },
-                Some(Value::List(ref mut oldlist)) => match value {
-                    Value::Single(val) => {
-                        oldlist.push(val);
-                        self.fields.insert(name, existing.unwrap());
-                    }
-                    Value::List(mut lst) => {
-                        oldlist.append(&mut lst);
-                        self.fields.insert(name, existing.unwrap());
-                    }
-                },
             }
-        } else {
-            self.fields.insert(name, value);
+            Entry::Vacant(entry) => {
+                entry.insert(value);
+            }
         }
     }
 

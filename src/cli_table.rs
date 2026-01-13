@@ -1,4 +1,5 @@
 use fancy_regex::Regex;
+use log::{debug, trace};
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::Path;
@@ -42,10 +43,10 @@ impl ParsedCliTable {
             .delimiter(b',')
             .trim(csv::Trim::All)
             .from_reader(reader);
-        println!("Reader");
+        trace!("Reader");
 
         let headers: Vec<&str> = rdr.headers()?.into_iter().collect();
-        println!("Headers: {:?}", &headers);
+        trace!("Headers: {:?}", &headers);
 
         if !headers.contains(&"Template") {
             return Err("No template".into());
@@ -82,7 +83,7 @@ impl ParsedCliTable {
         Ok(rows)
     }
     pub fn from_file(fname: &str) -> Self {
-        println!("Loading cli table from {}", &fname);
+        debug!("Loading cli table from {}", &fname);
         let rows = Self::example(fname).unwrap();
         ParsedCliTable {
             fname: fname.to_string(),
@@ -100,18 +101,16 @@ impl CliTable {
         let chars: Vec<char> = input.chars().collect();
         let mut result = String::new();
 
-        // Build the nested structure from left to right
-        for (_i, c) in chars.iter().enumerate() {
-            // Add opening parenthesis and character
-            result.push_str("(");
+        for (i, c) in chars.iter().enumerate() {
+            if i > 0 {
+                result.push('(');
+            }
             result.push(*c);
-
-            // For all characters except the last one, we'll need
-            // to close their groups at the end
         }
 
-        // Add closing parentheses and question marks
-        result.push_str(&")?".repeat(chars.len()));
+        if chars.len() > 1 {
+            result.push_str(&")?".repeat(chars.len() - 1));
+        }
 
         result
     }
@@ -184,7 +183,7 @@ impl CliTable {
                     row_index,
                     command_regex,
                 };
-                let no_platform = format!("no-platform");
+                let no_platform = "no-platform".to_string();
                 let platform_name: &str = row.platform.as_ref().unwrap_or(&no_platform);
                 platform_regex_rules
                     .entry(platform_name.into())
@@ -196,5 +195,31 @@ impl CliTable {
             platform_regex_rules,
             tables,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_expand_string() {
+        assert_eq!(CliTable::expand_string(""), "");
+        assert_eq!(CliTable::expand_string("w"), "w");
+        assert_eq!(CliTable::expand_string("sh"), "s(h)?");
+        assert_eq!(CliTable::expand_string("sho"), "s(h(o)?)?");
+        assert_eq!(CliTable::expand_string("show"), "s(h(o(w)?)?)?");
+    }
+
+    #[test]
+    fn test_expand_brackets() {
+        assert_eq!(CliTable::expand_brackets("show"), "show");
+        assert_eq!(CliTable::expand_brackets("sh[[ow]]"), "sh(o(w)?)?");
+        assert_eq!(CliTable::expand_brackets("[[show]]"), "s(h(o(w)?)?)?");
+        assert_eq!(CliTable::expand_brackets("sh[[ow]] ip bgp"), "sh(o(w)?)? ip bgp");
+        assert_eq!(
+            CliTable::expand_brackets("sh[[ow]] ip bgp su[[mmary]]"),
+            "sh(o(w)?)? ip bgp su(m(m(a(r(y)?)?)?)?)?)?"
+        );
     }
 }

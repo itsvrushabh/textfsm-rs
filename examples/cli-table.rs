@@ -7,6 +7,7 @@ struct ParsedSample {
 }
 
 enum VerifyResult {
+    CouldNotLoadYaml,
     VerifySuccess,
     ResultsDiffer,
 }
@@ -79,7 +80,7 @@ fn verify(
         }
     } else {
         println!("WARNING: YAML did not load correctly!");
-        panic!("Could not load YAML");
+        Ok(VerifyResult::CouldNotLoadYaml)
     }
 }
 

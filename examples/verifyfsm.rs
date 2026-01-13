@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use textfsm_rs::*;
 
 #[derive(Serialize, Deserialize)]
