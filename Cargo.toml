@@ -1,7 +1,7 @@
 [package]
 name = "textfsm-rs"
-version = "0.1.0"
-edition = "2021"
+version = "0.2.0"
+edition = "2025"
 description = "A Rust implementation of TextFSM"
 license = "Apache-2.0"
 repository = "https://github.com/itsvrushabh/textfsm-rs"
