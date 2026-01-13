@@ -1,51 +1,43 @@
 # textfsm-rs
-A one-long-weekend experiment in implementing TextFSM in Rust
 
-The TextFSM itself is somewhat implemented, however the table is using unordered hashmaps, and a pretty hacky way to deal with the row keys.
+A robust, performant, and safe Rust implementation of [TextFSM](https://github.com/google/textfsm), designed for parsing semi-structured text (like network CLI output) into structured data.
 
-However, it manages to extract the vast majority of information in ntc-templates tests:
-```
-NTC-TEMPLATES VERIFY RESULTS:
-   Total tests run: 1549
-      Could not load YAML: 0
-      Verify success: 1537
-      Results differ: 12
-```
+## Features
 
-This is how to launch the test functionality (which aims to include the multi-template function),
-and which tests are broken:
+-   **Full TextFSM Support**: Implements the core TextFSM grammar, including `Value` definitions, States, Rules, and Actions (`Next`, `Continue`, `Record`, etc.).
+-   **CLI Table**: Built-in support for `ntc-templates` style index files for automatic template selection.
+-   **Safety**: Strong error handling with `Result` and `thiserror` (no panics).
+-   **Performance**: Optimized value insertion and state management.
+-   **Modern**: Uses `serde` for serialization and `log` for observability.
 
-```
-cargo run --release --example cli-table ~/network-automation/ntc-templates/
+## Documentation
 
-ntc-templates/tests/mikrotik_routeros/interface_print_detail/mikrotik_routeros_interface_print_detail_01.raw
-ntc-templates/tests/cisco_ios/show_switch_detail/cisco_ios_show_switch_detail02.raw
-ntc-templates/tests/cisco_ios/show_switch_detail/cisco_ios_show_switch_detail01.raw
-ntc-templates/tests/cisco_ios/show_module/cisco_ios_show_module4.raw
-ntc-templates/tests/cisco_ios/show_module/cisco_ios_show_module_02.raw
-ntc-templates/tests/cisco_ios/show_module/cisco_ios_show_module1.raw
-ntc-templates/tests/cisco_ios/show_module/cisco_ios_show_module5.raw
-ntc-templates/tests/cisco_ios/show_module/cisco_ios_show_module_01.raw
-ntc-templates/tests/cisco_ios/show_module/cisco_ios_show_module3.raw
-ntc-templates/tests/cisco_ios/show_module/cisco_ios_show_module2.raw
-ntc-templates/tests/huawei_smartax/display_ont_info_0/huawei_smartax_display_ont_info_fsp_4.raw
-ntc-templates/tests/huawei_smartax/display_ont_info_summary_ont/huawei_smartax_display_ont_info_summary_ont_5.raw
+-   [Usage Guide](docs/usage.md): How to use the library in your Rust projects.
+-   [Architecture](docs/architecture.md): Internal design and implementation details.
+
+## Quick Start
+
+```rust
+use textfsm_rs::TextFSM;
+
+fn main() {
+    let mut fsm = TextFSM::from_file("templates/cisco_ios_show_version.textfsm").unwrap();
+    let records = fsm.parse_file("data/cisco_output.txt", None).unwrap();
+    
+    for record in records {
+        println!("{:?}", record);
+    }
+}
 ```
 
-## Updates
+## Testing
 
-### Dependencies
+The project includes comprehensive tests against real-world data from `ntc-templates`.
 
-Updated `Cargo.toml` to use specific versions for all dependencies, replacing wildcard versions. This improves build stability and predictability. `thiserror` was also added for enhanced error handling.
+```bash
+cargo test
+```
 
-### Error Handling
+## License
 
-Refactored error handling to use `Result` types instead of panicking. Introduced a custom `TextFsmError` to provide more specific and robust error information throughout the library.
-
-### Testing
-
-Added comprehensive end-to-end tests to improve test coverage. The test suite now includes a scenario that loads a template, parses a data file, and validates the extracted output. The test file structure was also reorganized for better maintainability.
-
-### Logging
-
-Replaced direct `println!` macros with the `log` crate for more flexible and configurable logging. This allows for better control over log levels and output destinations.
+Apache-2.0
