@@ -134,7 +134,8 @@ fn main() {
         .expect("missing path to a https://github.com/networktocode/ntc-templates checkout");
 
     let template_dir = format!("{}/ntc_templates/templates/", &root_path);
-    let cli_table = CliTable::from_file(&format!("{}/index", &template_dir)).expect("Error loading CLI table");
+    let cli_table =
+        CliTable::from_file(&format!("{}/index", &template_dir)).expect("Error loading CLI table");
 
     if let Some((index_name, row)) = cli_table.get_template_for_command("cisco_ios", "show int") {
         println!("index: {:?}", index_name);

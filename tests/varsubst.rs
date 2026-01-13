@@ -1,4 +1,3 @@
-
 use textfsm_rs::varsubst::*;
 
 #[cfg(test)]

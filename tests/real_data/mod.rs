@@ -1,6 +1,6 @@
-use textfsm_rs::{TextFSM, CliTable};
 use std::fs;
 use std::path::Path;
+use textfsm_rs::{CliTable, TextFSM};
 
 fn get_data_dir() -> String {
     "tests/data/cli".to_string()
@@ -21,18 +21,27 @@ fn test_individual_templates() {
 
             if Path::new(&example_path).exists() {
                 println!("Testing template: {}", template_path);
-                
+
                 let mut textfsm = TextFSM::from_file(template_path)
                     .expect(&format!("Failed to parse template {}", template_path));
-                
-                let result = textfsm.parse_file(&example_path, None)
+
+                let result = textfsm
+                    .parse_file(&example_path, None)
                     .expect(&format!("Failed to parse data file {}", example_path));
 
-                assert!(!result.is_empty(), "Result shouldn't be empty for {}", template_path);
-                
+                assert!(
+                    !result.is_empty(),
+                    "Result shouldn't be empty for {}",
+                    template_path
+                );
+
                 // Basic validation: ensure we have some fields
                 for record in result {
-                    assert!(!record.fields.is_empty(), "Record fields shouldn't be empty in {}", template_path);
+                    assert!(
+                        !record.fields.is_empty(),
+                        "Record fields shouldn't be empty in {}",
+                        template_path
+                    );
                 }
             }
         }
@@ -43,7 +52,7 @@ fn test_individual_templates() {
 fn test_cli_table_index() {
     let data_dir = get_data_dir();
     let index_path = format!("{}/index", data_dir);
-    
+
     // CliTable::from_file expects the index file to exist
     let cli_table = CliTable::from_file(&index_path).expect("Failed to load CLI table index");
 
@@ -51,9 +60,17 @@ fn test_cli_table_index() {
     let test_cases = vec![
         ("Cisco", "show ip bgp summary", "cisco_bgp_summary_template"),
         ("Cisco", "show version", "cisco_version_template"),
-        ("Force10", "show ip bgp summary", "f10_ip_bgp_summary_template"),
+        (
+            "Force10",
+            "show ip bgp summary",
+            "f10_ip_bgp_summary_template",
+        ),
         ("Force10", "show version", "f10_version_template"),
-        ("Juniper", "show bgp summary", "juniper_bgp_summary_template"),
+        (
+            "Juniper",
+            "show bgp summary",
+            "juniper_bgp_summary_template",
+        ),
         ("Juniper", "show version", "juniper_version_template"),
         // Test variable command expansion
         ("Cisco", "sh ip bgp su", "cisco_bgp_summary_template"),
@@ -62,12 +79,22 @@ fn test_cli_table_index() {
 
     for (platform, command, expected_template) in test_cases {
         let result = cli_table.get_template_for_command(platform, command);
-        assert!(result.is_some(), "Failed to match command '{}' for platform '{}'", command, platform);
-        
+        assert!(
+            result.is_some(),
+            "Failed to match command '{}' for platform '{}'",
+            command,
+            platform
+        );
+
         let (dir, row) = result.unwrap();
         // The dir returned by CliTable is the directory of the index file
         assert_eq!(dir, data_dir, "Directory mismatch");
-        assert!(row.templates.contains(&expected_template.to_string()), 
-            "Template mismatch for '{}'. Expected {}, got {:?}", command, expected_template, row.templates);
+        assert!(
+            row.templates.contains(&expected_template.to_string()),
+            "Template mismatch for '{}'. Expected {}, got {:?}",
+            command,
+            expected_template,
+            row.templates
+        );
     }
 }

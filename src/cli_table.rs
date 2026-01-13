@@ -1,7 +1,7 @@
+use crate::{Result, TextFsmError};
 use fancy_regex::Regex;
 use log::{debug, trace};
 use std::collections::HashMap;
-use std::error::Error;
 use std::path::Path;
 
 /// Represents a CLI table index file parsed into memory.
@@ -47,7 +47,7 @@ pub struct CliTableRow {
 }
 
 impl ParsedCliTable {
-    fn example(fname: &str) -> Result<Vec<CliTableRow>, Box<dyn Error>> {
+    fn example(fname: &str) -> Result<Vec<CliTableRow>> {
         use std::io::BufReader;
         let file = std::fs::File::open(fname)?;
         let reader = BufReader::new(file);
@@ -64,15 +64,22 @@ impl ParsedCliTable {
         trace!("Headers: {:?}", &headers);
 
         if !headers.contains(&"Template") {
-            return Err("No template".into());
+            return Err(TextFsmError::ParseError(
+                "No 'Template' column in index file".into(),
+            ));
         }
         if !headers.contains(&"Command") {
-            return Err("No command".into());
+            return Err(TextFsmError::ParseError(
+                "No 'Command' column in index file".into(),
+            ));
         }
 
         let template_position = headers.iter().position(|x| *x == "Template").unwrap();
         let command_position = headers.iter().position(|x| *x == "Command").unwrap();
-        let maybe_platform_position = headers.iter().position(|x| *x == "Platform").or_else(|| headers.iter().position(|x| *x == "Vendor"));
+        let maybe_platform_position = headers
+            .iter()
+            .position(|x| *x == "Platform")
+            .or_else(|| headers.iter().position(|x| *x == "Vendor"));
         let maybe_hostname_position = headers.iter().position(|x| *x == "Hostname");
 
         for result in rdr.records() {
@@ -82,7 +89,7 @@ impl ParsedCliTable {
             let hostname: Option<String> =
                 maybe_hostname_position.map(|hpos| record[hpos].to_string());
             let templates: Vec<String> = record[template_position]
-                .split(":")
+                .split(':')
                 .map(|x| x.to_string())
                 .collect();
             let command = record[command_position].to_string();
@@ -99,7 +106,7 @@ impl ParsedCliTable {
     }
 
     /// Loads and parses a CLI table index from a file.
-    pub fn from_file(fname: &str) -> Result<Self, Box<dyn Error>> {
+    pub fn from_file(fname: &str) -> Result<Self> {
         debug!("Loading cli table from {}", &fname);
         let rows = Self::example(fname)?;
         Ok(ParsedCliTable {
@@ -148,8 +155,7 @@ impl CliTable {
                 let expanded = Self::expand_string(content);
                 result.push_str(&expanded);
                 current_pos = content_start + end + 2;
-            }
-            else {
+            } else {
                 // No matching ]], treat [[ as literal
                 result.push_str("[[");
                 current_pos = content_start;
@@ -187,7 +193,7 @@ impl CliTable {
     }
 
     /// Loads a CLI table from an index file and compiles all command regexes.
-    pub fn from_file(fname: &str) -> Result<Self, Box<dyn Error>> {
+    pub fn from_file(fname: &str) -> Result<Self> {
         let parsed_cli_table = ParsedCliTable::from_file(fname)?;
         let tables = vec![parsed_cli_table];
         let mut platform_regex_rules: HashMap<String, Vec<CliTableRegexRule>> = Default::default();
@@ -196,7 +202,8 @@ impl CliTable {
             for (row_index, row) in table.rows.iter().enumerate() {
                 let expanded_command = Self::expand_brackets(&row.command);
                 let anchored_command = format!("^{}$", expanded_command);
-                let command_regex = Regex::new(&anchored_command)?;
+                let command_regex = Regex::new(&anchored_command)
+                    .map_err(|e| TextFsmError::ParseError(e.to_string()))?;
 
                 let rule = CliTableRegexRule {
                     table_index,
@@ -236,7 +243,10 @@ mod tests {
         assert_eq!(CliTable::expand_brackets("show"), "show");
         assert_eq!(CliTable::expand_brackets("sh[[ow]]"), "sh(o(w)?)?");
         assert_eq!(CliTable::expand_brackets("[[show]]"), "(s(h(o(w)?)?)?)?");
-        assert_eq!(CliTable::expand_brackets("sh[[ow]] ip bgp"), "sh(o(w)?)? ip bgp");
+        assert_eq!(
+            CliTable::expand_brackets("sh[[ow]] ip bgp"),
+            "sh(o(w)?)? ip bgp"
+        );
         assert_eq!(
             CliTable::expand_brackets("sh[[ow]] ip bgp su[[mmary]]"),
             "sh(o(w)?)? ip bgp su(m(m(a(r(y)?)?)?)?)?"

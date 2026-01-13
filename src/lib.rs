@@ -1,6 +1,5 @@
 pub mod error;
 pub use error::{Result, TextFsmError};
-use std::fmt;
 use log::{debug, error, trace};
 pub use pest::iterators::Pair;
 pub use pest::Parser;
@@ -8,14 +7,14 @@ use pest_derive::Parser;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt;
 
 pub mod cli_table;
 pub mod varsubst;
 pub use cli_table::CliTable;
 
 /// Represents a single row of extracted data from a TextFSM template.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct DataRecord {
     /// Map of value names to their extracted values.
     #[serde(flatten)]
@@ -40,10 +39,7 @@ impl DataRecord {
 
     /// Compares two sets of records and returns differences.
     /// Returns a tuple of (fields only in result, fields only in other).
-    pub fn compare_sets(
-        result: &[Self],
-        other: &[Self],
-    ) -> (Vec<Vec<String>>, Vec<Vec<String>>) {
+    pub fn compare_sets(result: &[Self], other: &[Self]) -> (Vec<Vec<String>>, Vec<Vec<String>>) {
         let mut only_in_result: Vec<Vec<String>> = vec![];
         let mut only_in_other: Vec<Vec<String>> = vec![];
 
@@ -163,7 +159,6 @@ pub enum Value {
     /// A list of extracted strings (used for fields with 'List' option).
     List(Vec<String>),
 }
-
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -706,13 +701,13 @@ impl TextFSMParser {
                                             &pair, &values,
                                         )?;
                                         trace!("STATE DEFINITION END: {:?}", &state);
-                                        if &state.name != "EOF"
-                                            && states.contains_key(&state.name) {
-                                                return Err(TextFsmError::StateError(format!(
-                                                    "State {} already defined in the file!",
-                                                    &state.name
-                                                )));
-                                            }
+                                        if &state.name != "EOF" && states.contains_key(&state.name)
+                                        {
+                                            return Err(TextFsmError::StateError(format!(
+                                                "State {} already defined in the file!",
+                                                &state.name
+                                            )));
+                                        }
                                         states.insert(state.name.clone(), state);
                                     }
                                     x => {
@@ -742,7 +737,9 @@ impl TextFSMParser {
                 }
 
                 if !states.contains_key("Start") {
-                    return Err(TextFsmError::StateError("Start state not found".to_string()));
+                    return Err(TextFsmError::StateError(
+                        "Start state not found".to_string(),
+                    ));
                 }
 
                 Ok(TextFSMParser {
@@ -751,12 +748,10 @@ impl TextFSMParser {
                     states,
                 })
             }
-            Err(e) => {
-                Err(TextFsmError::ParseError(format!(
-                    "file {} Error: {}",
-                    &fname, e
-                )))
-            }
+            Err(e) => Err(TextFsmError::ParseError(format!(
+                "file {} Error: {}",
+                &fname, e
+            ))),
         }
     }
 }
@@ -775,13 +770,12 @@ impl TextFSM {
 
     /// Sets the current state of the engine.
     pub fn set_curr_state(&mut self, state_name: &str) -> Result<()> {
-        if state_name != "End"
-            && !self.parser.states.contains_key(state_name) {
-                return Err(TextFsmError::StateError(format!(
-                    "State '{}' not found!",
-                    state_name
-                )));
-            }
+        if state_name != "End" && !self.parser.states.contains_key(state_name) {
+            return Err(TextFsmError::StateError(format!(
+                "State '{}' not found!",
+                state_name
+            )));
+        }
         self.curr_state = state_name.to_string();
         Ok(())
     }
@@ -791,7 +785,10 @@ impl TextFSM {
     }
 
     pub fn is_filldown_value(&self, value_name: &str) -> Option<bool> {
-        self.parser.values.get(value_name).map(|val| val.is_filldown)
+        self.parser
+            .values
+            .get(value_name)
+            .map(|val| val.is_filldown)
     }
 
     pub fn is_fillup_value(&self, value_name: &str) -> Option<bool> {
@@ -843,9 +840,7 @@ impl TextFSM {
             trace!("RECORD KEY: '{:?}'", &curr_record.record_key);
         }
         if value_def.is_filldown {
-            filldown_record
-                .fields
-                .insert(name.to_string(), ins_value);
+            filldown_record.fields.insert(name.to_string(), ins_value);
         }
         Ok(())
     }
@@ -858,12 +853,12 @@ impl TextFSM {
         // So we extract what we need or restructure.
         // Since `self.parser` is immutable here, and we mutate `self.curr_record`, `self.records`, `self.curr_state`.
         // The issue is `self.curr_state` string is in `self`.
-        
+
         // Let's get the state definition.
         // We can't simple take `&self.parser.states` because `self` is borrowed mutably for the whole function?
         // No, `parse_line` takes `&mut self`.
         // We can reborrow.
-        
+
         let state_name = &self.curr_state;
         let state_def = self.parser.states.get(state_name);
 
@@ -884,9 +879,12 @@ impl TextFSM {
                         for caps in rx.captures_iter(aline) {
                             for name in &rule.match_variables {
                                 let value_def = self.parser.values.get(name).ok_or_else(|| {
-                                    TextFsmError::InternalError(format!("Value definition for {} not found", name))
+                                    TextFsmError::InternalError(format!(
+                                        "Value definition for {} not found",
+                                        name
+                                    ))
                                 })?;
-                                
+
                                 let maybe_value = caps.name(name).map(|x| x.as_str().to_string());
                                 self.insert_value_optimized(
                                     "CLASSIC",
@@ -906,7 +904,10 @@ impl TextFSM {
                         for caps in rx.captures_iter(aline) {
                             for name in &rule.match_variables {
                                 let value_def = self.parser.values.get(name).ok_or_else(|| {
-                                    TextFsmError::InternalError(format!("Value definition for {} not found", name))
+                                    TextFsmError::InternalError(format!(
+                                        "Value definition for {} not found",
+                                        name
+                                    ))
                                 })?;
 
                                 if let Ok(ref caps) = caps {
@@ -1009,9 +1010,10 @@ impl TextFSM {
                                                 .fields
                                                 .insert(v.name.clone(), Value::List(vec![]));
                                         } else {
-                                            new_rec
-                                                .fields
-                                                .insert(v.name.clone(), Value::Single(String::new()));
+                                            new_rec.fields.insert(
+                                                v.name.clone(),
+                                                Value::Single(String::new()),
+                                            );
                                         }
                                     }
                                 }
@@ -1078,7 +1080,7 @@ impl TextFSM {
     }
 
     /// Parses an entire file and returns the extracted records.
-    /// 
+    ///
     /// # Arguments
     /// * `fname` - Path to the data file to parse.
     /// * `conversion` - Optional transformation to apply to the results.

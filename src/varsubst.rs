@@ -4,7 +4,7 @@ pub use pest::Parser;
 use pest_derive::Parser;
 
 /// A parser for strings containing TextFSM variable substitutions.
-/// 
+///
 /// Handles formats like `$VAR`, `${VAR}`, and escaped `$$`.
 #[derive(Parser)]
 #[grammar = "varsubst.pest"]
@@ -23,10 +23,10 @@ pub enum ParseChunk {
 
 impl VariableParser {
     /// Parses a string containing `$` variable substitutions into a list of chunks.
-    /// 
+    ///
     /// # Arguments
     /// * `input` - The string to parse.
-    /// 
+    ///
     /// # Returns
     /// A vector of `ParseChunk` or a Pest error.
     pub fn parse_dollar_string(input: &str) -> Result<Vec<ParseChunk>, Error<Rule>> {

@@ -1,5 +1,5 @@
-use textfsm_rs::*;
 use pest::Parser;
+use textfsm_rs::*;
 
 #[test]
 fn test_regex_pattern() {

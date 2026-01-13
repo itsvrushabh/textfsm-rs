@@ -3,7 +3,9 @@ use textfsm_rs::TextFSM;
 #[test]
 fn test_end_to_end() {
     let mut textfsm = TextFSM::from_file("tests/end_to_end/sample.template").unwrap();
-    let result = textfsm.parse_file("tests/end_to_end/sample.data", None).unwrap();
+    let result = textfsm
+        .parse_file("tests/end_to_end/sample.data", None)
+        .unwrap();
 
     assert_eq!(result.len(), 2);
 
