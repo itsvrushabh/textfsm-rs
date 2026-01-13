@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use textfsm_rs::TextFSM;
 
 fn benchmark_parsing(c: &mut Criterion) {

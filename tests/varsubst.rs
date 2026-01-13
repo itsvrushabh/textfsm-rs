@@ -3,8 +3,8 @@ use textfsm_rs::varsubst::*;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pest::error::Error;
     use pest::Parser;
+    use pest::error::Error;
 
     fn parse_test(input: &str) -> Result<(), Error<Rule>> {
         let pairs = VariableParser::parse(Rule::main, input)?;

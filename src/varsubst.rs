@@ -1,6 +1,6 @@
+pub use pest::Parser;
 use pest::error::Error;
 pub use pest::iterators::Pair;
-pub use pest::Parser;
 use pest_derive::Parser;
 
 /// A parser for strings containing TextFSM variable substitutions.

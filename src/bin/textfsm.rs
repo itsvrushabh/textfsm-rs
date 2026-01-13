@@ -59,117 +59,79 @@ fn main() -> anyhow::Result<()> {
     env_logger::init();
     let cli = Cli::parse();
 
-        match &cli.command {
+    match &cli.command {
+        Commands::Parse {
+            template,
 
-            Commands::Parse {
+            input,
 
-                template,
+            lowercase,
+        } => {
+            let mut fsm = TextFSM::from_file(template)?;
 
-                input,
+            let conversion = if *lowercase {
+                Some(DataRecordConversion::LowercaseKeys)
+            } else {
+                None
+            };
 
-                lowercase,
+            let results = fsm.parse_file(input, conversion)?;
 
-            } => {
-
-                let mut fsm = TextFSM::from_file(template)?;
-
-                let conversion = if *lowercase {
-
-                    Some(DataRecordConversion::LowercaseKeys)
-
-                } else {
-
-                    None
-
-                };
-
-    
-
-                let results = fsm.parse_file(input, conversion)?;
-
-                
-
-                match cli.format {
-
-                    OutputFormat::Json => {
-
-                        println!("{}", serde_json::to_string_pretty(&results)?);
-
-                    }
-
-                    OutputFormat::Yaml => {
-
-                        println!("{}", serde_yml::to_string(&results)?);
-
-                    }
-
+            match cli.format {
+                OutputFormat::Json => {
+                    println!("{}", serde_json::to_string_pretty(&results)?);
                 }
 
+                OutputFormat::Yaml => {
+                    println!("{}", serde_yml::to_string(&results)?);
+                }
             }
+        }
 
-            Commands::Auto {
+        Commands::Auto {
+            index,
 
-                index,
+            platform,
 
-                platform,
+            command,
 
-                command,
+            input,
+        } => {
+            let cli_table = CliTable::from_file(index)?;
 
-                input,
+            if let Some((template_dir, row)) = cli_table.get_template_for_command(platform, command)
+            {
+                if let Some(template_name) = row.templates.first() {
+                    let template_path = PathBuf::from(&template_dir).join(template_name);
 
-            } => {
+                    eprintln!("Using template: {}", template_path.display());
 
-                let cli_table = CliTable::from_file(index)?;
+                    let mut fsm = TextFSM::from_file(&template_path)?;
 
-                
+                    let results =
+                        fsm.parse_file(input, Some(DataRecordConversion::LowercaseKeys))?;
 
-                if let Some((template_dir, row)) = cli_table.get_template_for_command(platform, command) {
-
-                    if let Some(template_name) = row.templates.first() {
-
-                        let template_path = PathBuf::from(&template_dir).join(template_name);
-
-                        eprintln!("Using template: {}", template_path.display());
-
-                        
-
-                        let mut fsm = TextFSM::from_file(&template_path)?;
-
-                        let results = fsm.parse_file(input, Some(DataRecordConversion::LowercaseKeys))?;
-
-                        
-
-                        match cli.format {
-
-                            OutputFormat::Json => {
-
-                                println!("{}", serde_json::to_string_pretty(&results)?);
-
-                            }
-
-                            OutputFormat::Yaml => {
-
-                                println!("{}", serde_yml::to_string(&results)?);
-
-                            }
-
+                    match cli.format {
+                        OutputFormat::Json => {
+                            println!("{}", serde_json::to_string_pretty(&results)?);
                         }
 
-                    } else {
-
-                        anyhow::bail!("No template found in index row");
-
+                        OutputFormat::Yaml => {
+                            println!("{}", serde_yml::to_string(&results)?);
+                        }
                     }
-
                 } else {
-
-                    anyhow::bail!("No matching template found for platform '{}' and command '{}'", platform, command);
-
+                    anyhow::bail!("No template found in index row");
                 }
-
+            } else {
+                anyhow::bail!(
+                    "No matching template found for platform '{}' and command '{}'",
+                    platform,
+                    command
+                );
             }
-
         }
+    }
 
     Ok(())
 }
