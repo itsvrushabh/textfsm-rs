@@ -1,16 +1,20 @@
 # Usage Guide
 
-## Installation
+`textfsm-rs` can be used both as a Rust library in your projects and as a standalone command-line tool.
 
-Add `textfsm-rs` to your `Cargo.toml`. Since this is a library, you usually depend on it:
+## Library Usage
+
+### Installation
+
+Add `textfsm-rs` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-textfsm-rs = { path = "." } # Or git repository
+textfsm-rs = { git = "https://github.com/itsvrushabh/textfsm-rs.git" }
 serde_yml = "0.0.12" # Recommended for YAML serialization
 ```
 
-## Basic Parsing
+### Basic Parsing
 
 To parse a raw text file using a TextFSM template:
 
@@ -33,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-## Using CLI Table
+### Using CLI Table
 
 The `CliTable` functionality allows automatic template selection based on the platform and command.
 
@@ -53,7 +57,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-## Error Handling
+### Error Handling
 
 The library uses a custom `TextFsmError` type (via `thiserror`). All major operations return a `Result`.
 
@@ -68,3 +72,68 @@ let fsm = match TextFSM::from_file("invalid.template") {
     }
 };
 ```
+
+---
+
+## Command Line Interface (CLI)
+
+The `textfsm` binary allows you to parse files directly from the terminal.
+
+### Installation
+
+To install the binary globally:
+
+```bash
+cargo install --path . # If inside the repository
+# OR
+cargo install textfsm-rs # If published to crates.io (future)
+```
+
+### Commands
+
+#### 1. `parse`: Direct Template Parsing
+
+Parse a raw text file using a specific TextFSM template.
+
+**Usage:**
+```bash
+textfsm parse --template <TEMPLATE_PATH> --input <DATA_PATH> [--lowercase] [--format <json|yaml>]
+```
+
+**Example:**
+```bash
+textfsm parse \
+  --template templates/cisco_ios_show_version.textfsm \
+  --input data/show_version.txt \
+  --format json
+```
+
+#### 2. `auto`: Automatic Template Selection
+
+Automatically find the correct template using an `ntc-templates` index file.
+
+**Usage:**
+```bash
+textfsm auto \
+  --index <INDEX_PATH> \
+  --platform <PLATFORM> \
+  --command <COMMAND> \
+  --input <DATA_PATH> \
+  [--format <json|yaml>]
+```
+
+**Example:**
+```bash
+textfsm auto \
+  --index ntc_templates/templates/index \
+  --platform cisco_ios \
+  --command "show version" \
+  --input data/show_version.txt
+```
+
+### Options
+
+*   `--format`: Choose the output format.
+    *   `yaml` (default): Human-readable YAML.
+    *   `json`: JSON output, useful for piping to `jq`.
+*   `--lowercase` (parse only): Convert all keys in the output to lowercase.

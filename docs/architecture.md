@@ -41,9 +41,18 @@ State names are managed as reused strings to avoid repeated allocation during tr
 ### 3. Regex Anchoring
 `CliTable` command matching anchors regexes (`^...$`) to prevent partial matches (e.g., `[[show]]` matching "show config").
 
+## Project Structure
+
+-   **`src/lib.rs`**: Core library logic (`TextFSM`, `DataRecord`).
+-   **`src/cli_table.rs`**: Implementation of `CliTable` for template index parsing.
+-   **`src/varsubst.rs`**: Variable substitution parser (`${VAR}`).
+-   **`src/bin/textfsm.rs`**: The CLI entry point. Uses `clap` for argument parsing and `anyhow` for error handling.
+-   **`src/textfsm.pest`**: PEG grammar for TextFSM templates.
+
 ## Dependencies
 
 -   **`pest`**: PEG parser for the TextFSM template syntax.
 -   **`fancy-regex`**: Support for Python-style regex features (lookahead/behind) required by many TextFSM templates.
--   **`serde` / `serde_yml`**: Serialization support for structured output.
--   **`thiserror`**: Ergonomic error handling.
+-   **`serde` / `serde_yml` / `serde_json`**: Serialization support for structured output.
+-   **`thiserror`**: Ergonomic error handling for the library.
+-   **`clap`**: Command-line argument parser for the binary.
