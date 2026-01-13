@@ -9,6 +9,14 @@ authors = ["Rust User <itsvrushabh@gmail.com>"]
 keywords = ["textfsm", "parser", "network", "automation"]
 categories = ["network-programming", "parsing"]
 
+[lib]
+name = "textfsm_rs"
+path = "src/lib.rs"
+
+[[bin]]
+name = "textfsm"
+path = "src/bin/textfsm.rs"
+
 [dependencies]
 pest = "2.8.5"
 pest_derive = "2.8.5"

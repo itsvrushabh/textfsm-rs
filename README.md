@@ -52,6 +52,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+## CLI Usage
+
+You can use `textfsm-rs` as a standalone command-line tool.
+
+### Installation
+
+```bash
+cargo install textfsm-rs
+```
+
+### Commands
+
+**Parse a single file:**
+
+```bash
+textfsm parse --template templates/cisco_ios_show_version.textfsm --input data/show_version.txt --format json
+```
+
+**Auto-detect template (using ntc-templates index):**
+
+```bash
+textfsm auto --index ntc_templates/templates/index --platform cisco_ios --command "show version" --input data/show_version.txt
+```
+
 ## Advanced: Automated Template Mapping
 
 Using the `ntc-templates` index style:
