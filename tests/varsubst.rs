@@ -1,5 +1,3 @@
-use pest::Parser;
-use pest_derive::Parser;
 
 use textfsm_rs::varsubst::*;
 
