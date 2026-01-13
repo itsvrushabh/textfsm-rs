@@ -1,32 +1,73 @@
-use std::process::Command;
-use assert_cmd::prelude::*;
-use predicates::prelude::*;
+use textfsm_rs::{TextFSM, CliTable};
 use std::fs;
-use tempfile::tempdir;
+use std::path::Path;
+
+fn get_data_dir() -> String {
+    "tests/data/cli".to_string()
+}
 
 #[test]
-fn test_gen_yaml_file_integration() -> Result<(), Box<dyn std::error::Error>> {
-    let temp_dir = tempdir()?;
-    let raw_file_path = temp_dir.path().join("cisco_ios_show_clock.raw");
-    let expected_yml_path = "tests/cisco_ios/show_clock/cisco_ios_show_clock.yml";
-    let original_raw_path = "tests/cisco_ios/show_clock/cisco_ios_show_clock.raw";
+fn test_individual_templates() {
+    let data_dir = get_data_dir();
+    let paths = fs::read_dir(&data_dir).expect("Could not read data dir");
 
-    fs::copy(original_raw_path, &raw_file_path)?;
+    for path in paths {
+        let path = path.expect("Could not get path").path();
+        let file_name = path.file_name().unwrap().to_string_lossy();
 
-    let mut cmd = Command::cargo_bin("textfsm-templates")?;
-    cmd.arg("gen-yaml-file")
-        .arg("--file")
-        .arg(&raw_file_path);
+        if file_name.ends_with("_template") {
+            let template_path = path.to_str().unwrap();
+            let example_path = template_path.replace("_template", "_example");
 
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("Generating YAML file from"));
+            if Path::new(&example_path).exists() {
+                println!("Testing template: {}", template_path);
+                
+                let mut textfsm = TextFSM::from_file(template_path)
+                    .expect(&format!("Failed to parse template {}", template_path));
+                
+                let result = textfsm.parse_file(&example_path, None)
+                    .expect(&format!("Failed to parse data file {}", example_path));
 
-    let generated_yml_path = raw_file_path.with_extension("yml");
-    let generated_yml_content = fs::read_to_string(generated_yml_path)?;
-    let expected_yml_content = fs::read_to_string(expected_yml_path)?;
+                assert!(!result.is_empty(), "Result shouldn't be empty for {}", template_path);
+                
+                // Basic validation: ensure we have some fields
+                for record in result {
+                    assert!(!record.fields.is_empty(), "Record fields shouldn't be empty in {}", template_path);
+                }
+            }
+        }
+    }
+}
 
-    assert_eq!(generated_yml_content, expected_yml_content);
+#[test]
+fn test_cli_table_index() {
+    let data_dir = get_data_dir();
+    let index_path = format!("{}/index", data_dir);
+    
+    // CliTable::from_file expects the index file to exist
+    let cli_table = CliTable::from_file(&index_path).expect("Failed to load CLI table index");
 
-    Ok(())
+    // Test cases derived from index file content
+    let test_cases = vec![
+        ("Cisco", "show ip bgp summary", "cisco_bgp_summary_template"),
+        ("Cisco", "show version", "cisco_version_template"),
+        ("Force10", "show ip bgp summary", "f10_ip_bgp_summary_template"),
+        ("Force10", "show version", "f10_version_template"),
+        ("Juniper", "show bgp summary", "juniper_bgp_summary_template"),
+        ("Juniper", "show version", "juniper_version_template"),
+        // Test variable command expansion
+        ("Cisco", "sh ip bgp su", "cisco_bgp_summary_template"),
+        ("Cisco", "show ve", "cisco_version_template"),
+    ];
+
+    for (platform, command, expected_template) in test_cases {
+        let result = cli_table.get_template_for_command(platform, command);
+        assert!(result.is_some(), "Failed to match command '{}' for platform '{}'", command, platform);
+        
+        let (dir, row) = result.unwrap();
+        // The dir returned by CliTable is the directory of the index file
+        assert_eq!(dir, data_dir, "Directory mismatch");
+        assert!(row.templates.contains(&expected_template.to_string()), 
+            "Template mismatch for '{}'. Expected {}, got {:?}", command, expected_template, row.templates);
+    }
 }

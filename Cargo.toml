@@ -15,7 +15,7 @@ pest_derive = "2.8.5"
 regex = "1.12.2"
 fancy-regex = "0.17.0"
 serde = { version = "1.0.228", features = ["derive"] }
-serde_yaml = "0.9.34"
+serde_yml = "0.0.12"
 log = "0.4.29"
 env_logger = "0.11.8"
 csv = "1.4.0"

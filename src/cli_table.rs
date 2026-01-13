@@ -57,7 +57,7 @@ impl ParsedCliTable {
 
         let template_position = headers.iter().position(|x| *x == "Template").unwrap();
         let command_position = headers.iter().position(|x| *x == "Command").unwrap();
-        let maybe_platform_position = headers.iter().position(|x| *x == "Platform");
+        let maybe_platform_position = headers.iter().position(|x| *x == "Platform").or_else(|| headers.iter().position(|x| *x == "Vendor"));
         let maybe_hostname_position = headers.iter().position(|x| *x == "Hostname");
 
         for result in rdr.records() {
@@ -82,13 +82,13 @@ impl ParsedCliTable {
         }
         Ok(rows)
     }
-    pub fn from_file(fname: &str) -> Self {
+    pub fn from_file(fname: &str) -> Result<Self, Box<dyn Error>> {
         debug!("Loading cli table from {}", &fname);
-        let rows = Self::example(fname).unwrap();
-        ParsedCliTable {
+        let rows = Self::example(fname)?;
+        Ok(ParsedCliTable {
             fname: fname.to_string(),
             rows,
-        }
+        })
     }
 }
 
@@ -164,8 +164,8 @@ impl CliTable {
         None
     }
 
-    pub fn from_file(fname: &str) -> Self {
-        let parsed_cli_table = ParsedCliTable::from_file(fname);
+    pub fn from_file(fname: &str) -> Result<Self, Box<dyn Error>> {
+        let parsed_cli_table = ParsedCliTable::from_file(fname)?;
         let tables = vec![parsed_cli_table];
         let mut platform_regex_rules: HashMap<String, Vec<CliTableRegexRule>> = Default::default();
 
@@ -173,7 +173,7 @@ impl CliTable {
             for (row_index, row) in table.rows.iter().enumerate() {
                 let expanded_command = Self::expand_brackets(&row.command);
                 let anchored_command = format!("^{}$", expanded_command);
-                let command_regex = Regex::new(&anchored_command).unwrap();
+                let command_regex = Regex::new(&anchored_command)?;
 
                 let rule = CliTableRegexRule {
                     table_index,
@@ -188,10 +188,10 @@ impl CliTable {
                     .push(rule);
             }
         }
-        CliTable {
+        Ok(CliTable {
             platform_regex_rules,
             tables,
-        }
+        })
     }
 }
 

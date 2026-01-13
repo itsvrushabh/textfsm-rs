@@ -43,7 +43,12 @@ impl VariableParser {
                         out.push(ParseChunk::Text(inner_pair.as_str().to_string()));
                     }
                     x => {
-                        panic!("Rule {:?} should not happen at varsubst", x);
+                        return Err(Error::new_from_span(
+                            pest::error::ErrorVariant::CustomError {
+                                message: format!("Rule {:?} should not happen at varsubst", x),
+                            },
+                            inner_pair.as_span(),
+                        ));
                     }
                 }
                 /*

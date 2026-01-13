@@ -674,7 +674,10 @@ impl TextFSMParser {
                     println!("WARNING: EOI token not seen");
                 }
 
-                // FIXME: check that the "Start" state exists
+                if !states.contains_key("Start") {
+                    return Err(TextFsmError::StateError("Start state not found".to_string()));
+                }
+
                 Ok(TextFSMParser {
                     values,
                     mandatory_values,

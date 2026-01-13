@@ -20,7 +20,7 @@ fn verify(
 ) -> Result<VerifyResult> {
     let yaml = std::fs::read_to_string(&yaml_verify_name).expect("YAML File read failed");
 
-    if let Ok(yaml_map) = serde_yaml::from_str::<ParsedSample>(&yaml) {
+    if let Ok(yaml_map) = serde_yml::from_str::<ParsedSample>(&yaml) {
         let mut result: Vec<DataRecord> = vec![];
 
         for short_template_name in &row.templates {
@@ -134,7 +134,7 @@ fn main() {
         .expect("missing path to a https://github.com/networktocode/ntc-templates checkout");
 
     let template_dir = format!("{}/ntc_templates/templates/", &root_path);
-    let cli_table = CliTable::from_file(&format!("{}/index", &template_dir));
+    let cli_table = CliTable::from_file(&format!("{}/index", &template_dir)).expect("Error loading CLI table");
 
     if let Some((index_name, row)) = cli_table.get_template_for_command("cisco_ios", "show int") {
         println!("index: {:?}", index_name);
