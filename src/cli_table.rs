@@ -101,16 +101,12 @@ impl CliTable {
         let chars: Vec<char> = input.chars().collect();
         let mut result = String::new();
 
-        for (i, c) in chars.iter().enumerate() {
-            if i > 0 {
-                result.push('(');
-            }
+        for c in chars.iter() {
+            result.push('(');
             result.push(*c);
         }
 
-        if chars.len() > 1 {
-            result.push_str(&")?".repeat(chars.len() - 1));
-        }
+        result.push_str(&")?".repeat(chars.len()));
 
         result
     }
@@ -176,7 +172,8 @@ impl CliTable {
         for (table_index, table) in tables.iter().enumerate() {
             for (row_index, row) in table.rows.iter().enumerate() {
                 let expanded_command = Self::expand_brackets(&row.command);
-                let command_regex = Regex::new(&expanded_command).unwrap();
+                let anchored_command = format!("^{}$", expanded_command);
+                let command_regex = Regex::new(&anchored_command).unwrap();
 
                 let rule = CliTableRegexRule {
                     table_index,
@@ -187,7 +184,7 @@ impl CliTable {
                 let platform_name: &str = row.platform.as_ref().unwrap_or(&no_platform);
                 platform_regex_rules
                     .entry(platform_name.into())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(rule);
             }
         }
@@ -205,21 +202,21 @@ mod tests {
     #[test]
     fn test_expand_string() {
         assert_eq!(CliTable::expand_string(""), "");
-        assert_eq!(CliTable::expand_string("w"), "w");
-        assert_eq!(CliTable::expand_string("sh"), "s(h)?");
-        assert_eq!(CliTable::expand_string("sho"), "s(h(o)?)?");
-        assert_eq!(CliTable::expand_string("show"), "s(h(o(w)?)?)?");
+        assert_eq!(CliTable::expand_string("w"), "(w)?");
+        assert_eq!(CliTable::expand_string("sh"), "(s(h)?)?");
+        assert_eq!(CliTable::expand_string("sho"), "(s(h(o)?)?)?");
+        assert_eq!(CliTable::expand_string("show"), "(s(h(o(w)?)?)?)?");
     }
 
     #[test]
     fn test_expand_brackets() {
         assert_eq!(CliTable::expand_brackets("show"), "show");
         assert_eq!(CliTable::expand_brackets("sh[[ow]]"), "sh(o(w)?)?");
-        assert_eq!(CliTable::expand_brackets("[[show]]"), "s(h(o(w)?)?)?");
+        assert_eq!(CliTable::expand_brackets("[[show]]"), "(s(h(o(w)?)?)?)?");
         assert_eq!(CliTable::expand_brackets("sh[[ow]] ip bgp"), "sh(o(w)?)? ip bgp");
         assert_eq!(
             CliTable::expand_brackets("sh[[ow]] ip bgp su[[mmary]]"),
-            "sh(o(w)?)? ip bgp su(m(m(a(r(y)?)?)?)?)?)?"
+            "sh(o(w)?)? ip bgp su(m(m(a(r(y)?)?)?)?)?"
         );
     }
 }
