@@ -1,38 +1,84 @@
 # textfsm-rs
 
-A robust, performant, and safe Rust implementation of [TextFSM](https://github.com/google/textfsm), designed for parsing semi-structured text (like network CLI output) into structured data.
+[![Rust](https://github.com/itsvrushabh/textfsm-rs/actions/workflows/rust.yml/badge.svg)](https://github.com/itsvrushabh/textfsm-rs/actions/workflows/rust.yml)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
+A robust, performant, and safe Rust implementation of [TextFSM](https://github.com/google/textfsm). This library is designed to parse semi-structured text—specifically output from networking device CLI commands—into structured programmatic data (JSON, YAML, or Rust HashMaps).
+
+## Why textfsm-rs?
+
+*   **Blazing Fast**: Optimized for high-throughput parsing with minimal memory allocations.
+*   **Safe by Design**: Written in 100% safe Rust, replacing Python's runtime errors with compile-time checks and graceful `Result` handling.
+*   **NTC-Templates Compatible**: Designed to work out-of-the-box with the massive library of templates from [ntc-templates](https://github.com/networktocode/ntc-templates).
+*   **Modern Tooling**: Seamless integration with `serde` for serialization and `pest` for reliable template parsing.
 
 ## Features
 
--   **Full TextFSM Support**: Implements the core TextFSM grammar, including `Value` definitions, States, Rules, and Actions (`Next`, `Continue`, `Record`, etc.).
--   **CLI Table**: Built-in support for `ntc-templates` style index files for automatic template selection.
--   **Safety**: Strong error handling with `Result` and `thiserror` (no panics).
--   **Performance**: Optimized value insertion and state management.
--   **Modern**: Uses `serde` for serialization and `log` for observability.
+-   **Full TextFSM Specification**: Support for `Value` definitions (Filldown, Key, Required, List, Fillup), States, Rules, and Transitions.
+-   **Advanced Regex**: Uses `fancy-regex` to support Python-style features like lookahead and lookbehind.
+-   **Automatic Template Selection**: Built-in `CliTable` logic to automatically select the right template based on device platform and command.
+-   **Zero-Panic**: Library code avoids `unwrap()` and `panic!`, ensuring your automation tools stay up.
 
-## Documentation
+## Installation
 
--   [Usage Guide](docs/usage.md): How to use the library in your Rust projects.
--   [Architecture](docs/architecture.md): Internal design and implementation details.
+Add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+textfsm-rs = { git = "https://github.com/itsvrushabh/textfsm-rs.git" }
+serde = { version = "1.0", features = ["derive"] }
+```
 
 ## Quick Start
 
 ```rust
-use textfsm_rs::TextFSM;
+use textfsm_rs::{TextFSM, DataRecordConversion};
 
-fn main() {
-    let mut fsm = TextFSM::from_file("templates/cisco_ios_show_version.textfsm").unwrap();
-    let records = fsm.parse_file("data/cisco_output.txt", None).unwrap();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // 1. Initialize the FSM with a template
+    let mut fsm = TextFSM::from_file("templates/cisco_ios_show_version.textfsm")?;
+
+    // 2. Parse your CLI output
+    let records = fsm.parse_file("data/show_version.txt", Some(DataRecordConversion::LowercaseKeys))?;
     
+    // 3. Use the structured data
     for record in records {
-        println!("{:?}", record);
+        if let Some(version) = record.fields.get("Version") {
+            println!("Device Version: {}", version);
+        }
     }
+
+    Ok(())
 }
 ```
 
-## Testing
+## Advanced: Automated Template Mapping
 
-The project includes comprehensive tests against real-world data from `ntc-templates`.
+Using the `ntc-templates` index style:
+
+```rust
+use textfsm_rs::CliTable;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let index = CliTable::from_file("ntc_templates/templates/index")?;
+    
+    // Automatically find the template for a Cisco command
+    if let Some((dir, row)) = index.get_template_for_command("cisco_ios", "sh version") {
+        println!("Match found! Template: {}/{}", dir, row.templates[0]);
+    }
+    
+    Ok(())
+}
+```
+
+## Documentation
+
+*   [Usage Guide](docs/usage.md) - Detailed examples and API usage.
+*   [Architecture](docs/architecture.md) - Deep dive into internal implementation and optimizations.
+
+## Contributing
+
+Contributions are welcome! Please ensure all tests pass:
 
 ```bash
 cargo test
@@ -40,4 +86,4 @@ cargo test
 
 ## License
 
-Apache-2.0
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
