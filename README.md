@@ -99,6 +99,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 *   [Usage Guide](docs/usage.md) - Detailed examples and API usage.
 *   [Creating Templates](docs/creating_templates.md) - Syntax guide for writing .textfsm files.
+*   [Advanced Examples](docs/advanced_examples.md) - Patterns for complex parsing scenarios.
+*   [Common Capture Groups](docs/common_capture_groups.md) - Reference for standard variable names.
 *   [Architecture](docs/architecture.md) - Deep dive into internal implementation and optimizations.
 
 ## Contributing

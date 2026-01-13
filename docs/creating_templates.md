@@ -15,6 +15,8 @@ Value [Option[,Option...]] Name (Regex)
 -   **Regex**: A Regular Expression (PCRE/Rust-style) to capture the value. It must be enclosed in parentheses if you want to capture specific parts, though TextFSM often treats the whole regex as the capture group if not specified.
 -   **Options** (Optional): Comma-separated flags affecting behavior.
 
+> **Note:** When naming your values, please refer to the [Common Capture Groups](common_capture_groups.md) reference to ensure consistency with standard conventions.
+
 ### Supported Options
 
 | Option | Description |
