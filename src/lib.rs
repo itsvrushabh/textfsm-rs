@@ -802,16 +802,22 @@ impl TextFSM {
     /// Optimized value insertion into records.
     pub fn insert_value_optimized(
         &self,
-        typ: &str,
+
         curr_record: &mut DataRecord,
+
         filldown_record: &mut DataRecord,
-        name: &str,
+
         value_def: &ValueDefinition,
+
         maybe_value: Option<String>,
+
         aline: &str,
     ) -> Result<()> {
+        let name = &value_def.name;
+
         let ins_value = if let Some(value) = maybe_value {
-            trace!("{} SET VAR '{}' = '{}'", &typ, &name, &value.as_str());
+            trace!("SET VAR '{}' = '{}'", name, &value.as_str());
+
             if value_def.is_list {
                 Value::List(vec![value.clone()])
             } else {
@@ -819,29 +825,35 @@ impl TextFSM {
             }
         } else {
             error!(
-                "WARNING: {} Could not capture '{}' from string '{}'",
-                typ, name, aline
+                "WARNING: Could not capture '{}' from string '{}'",
+                name, aline
             );
+
             if value_def.is_list {
                 Value::List(vec![format!("None")])
             } else {
                 Value::Single(String::new())
             }
         };
+
         curr_record
             .fields
             .insert(name.to_string(), ins_value.clone());
+
         if value_def.is_key {
             curr_record.record_key = if let Some(k) = curr_record.record_key.clone() {
                 Some(format!("{}/{:?}", &k, &ins_value))
             } else {
                 Some(format!("{:?}", &ins_value))
             };
+
             trace!("RECORD KEY: '{:?}'", &curr_record.record_key);
         }
+
         if value_def.is_filldown {
             filldown_record.fields.insert(name.to_string(), ins_value);
         }
+
         Ok(())
     }
 
@@ -887,10 +899,8 @@ impl TextFSM {
 
                                 let maybe_value = caps.name(name).map(|x| x.as_str().to_string());
                                 self.insert_value_optimized(
-                                    "CLASSIC",
                                     &mut tmp_datarec,
                                     &mut tmp_filldown_rec,
-                                    name,
                                     value_def,
                                     maybe_value,
                                     aline,
@@ -914,10 +924,8 @@ impl TextFSM {
                                     let maybe_value =
                                         caps.name(name).map(|x| x.as_str().to_string());
                                     self.insert_value_optimized(
-                                        "FANCY",
                                         &mut tmp_datarec,
                                         &mut tmp_filldown_rec,
-                                        name,
                                         value_def,
                                         maybe_value,
                                         aline,

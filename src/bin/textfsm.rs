@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 use textfsm_rs::{CliTable, DataRecordConversion, TextFSM};
 
@@ -7,6 +7,16 @@ use textfsm_rs::{CliTable, DataRecordConversion, TextFSM};
 struct Cli {
     #[command(subcommand)]
     command: Commands,
+
+    /// Output format
+    #[arg(short, long, value_enum, default_value_t = OutputFormat::Yaml, global = true)]
+    format: OutputFormat,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum OutputFormat {
+    Json,
+    Yaml,
 }
 
 #[derive(Subcommand)]
@@ -66,8 +76,15 @@ fn main() -> anyhow::Result<()> {
             };
 
             let results = fsm.parse_file(input_str, conversion)?;
-            let yaml_output = serde_yml::to_string(&results)?;
-            println!("{}", yaml_output);
+
+            match cli.format {
+                OutputFormat::Json => {
+                    println!("{}", serde_json::to_string_pretty(&results)?);
+                }
+                OutputFormat::Yaml => {
+                    println!("{}", serde_yml::to_string(&results)?);
+                }
+            }
         }
         Commands::Auto {
             index,
@@ -82,11 +99,6 @@ fn main() -> anyhow::Result<()> {
 
             if let Some((template_dir, row)) = cli_table.get_template_for_command(platform, command)
             {
-                // ntc-templates index often points to relative paths.
-                // We need to resolve the template path relative to the index file or the templates dir.
-                // The library returns the directory of the index file as template_dir if using `from_file`.
-
-                // Typically we try the first template in the list
                 if let Some(template_name) = row.templates.first() {
                     let template_path = PathBuf::from(&template_dir).join(template_name);
                     eprintln!("Using template: {}", template_path.display());
@@ -95,8 +107,14 @@ fn main() -> anyhow::Result<()> {
                     let results =
                         fsm.parse_file(input_str, Some(DataRecordConversion::LowercaseKeys))?;
 
-                    let yaml_output = serde_yml::to_string(&results)?;
-                    println!("{}", yaml_output);
+                    match cli.format {
+                        OutputFormat::Json => {
+                            println!("{}", serde_json::to_string_pretty(&results)?);
+                        }
+                        OutputFormat::Yaml => {
+                            println!("{}", serde_yml::to_string(&results)?);
+                        }
+                    }
                 } else {
                     anyhow::bail!("No template found in index row");
                 }
