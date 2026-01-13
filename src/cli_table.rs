@@ -4,30 +4,45 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::path::Path;
 
+/// Represents a CLI table index file parsed into memory.
 #[derive(Debug, Clone)]
 pub struct ParsedCliTable {
+    /// The filename of the index.
     pub fname: String,
+    /// The rows of the table.
     pub rows: Vec<CliTableRow>,
 }
 
+/// A high-level interface for command-to-template mapping using index files.
 #[derive(Debug, Clone)]
 pub struct CliTable {
+    /// List of parsed index tables.
     pub tables: Vec<ParsedCliTable>,
+    /// Map of platform names to their associated regex rules for command matching.
     pub platform_regex_rules: HashMap<String, Vec<CliTableRegexRule>>,
 }
 
+/// A rule for matching a command to a specific row in an index table.
 #[derive(Debug, Clone)]
 pub struct CliTableRegexRule {
+    /// Index into the `tables` vector.
     pub table_index: usize,
+    /// Index into the `rows` vector of the selected table.
     pub row_index: usize,
+    /// Pre-compiled regex for matching the CLI command.
     pub command_regex: Regex,
 }
 
+/// A single entry in a CLI table index.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CliTableRow {
+    /// List of TextFSM template filenames associated with this entry.
     pub templates: Vec<String>,
+    /// Optional hostname filter (regex).
     pub hostname: Option<String>,
+    /// Optional platform/vendor name.
     pub platform: Option<String>,
+    /// The CLI command string (supports `[[abbrev]]` syntax).
     pub command: String,
 }
 
@@ -82,6 +97,8 @@ impl ParsedCliTable {
         }
         Ok(rows)
     }
+
+    /// Loads and parses a CLI table index from a file.
     pub fn from_file(fname: &str) -> Result<Self, Box<dyn Error>> {
         debug!("Loading cli table from {}", &fname);
         let rows = Self::example(fname)?;
@@ -93,6 +110,8 @@ impl ParsedCliTable {
 }
 
 impl CliTable {
+    /// Expands a string with optional tail characters into a regex group.
+    /// E.g., "show" -> "(s(h(o(w)?)?)?)?"
     fn expand_string(input: &str) -> String {
         if input.is_empty() {
             return String::new();
@@ -111,6 +130,7 @@ impl CliTable {
         result
     }
 
+    /// Expands command abbreviations inside `[[ ]]` into nested optional regex groups.
     fn expand_brackets(input: &str) -> String {
         let mut result = String::new();
         let mut current_pos = 0;
@@ -128,7 +148,8 @@ impl CliTable {
                 let expanded = Self::expand_string(content);
                 result.push_str(&expanded);
                 current_pos = content_start + end + 2;
-            } else {
+            }
+            else {
                 // No matching ]], treat [[ as literal
                 result.push_str("[[");
                 current_pos = content_start;
@@ -145,6 +166,7 @@ impl CliTable {
         path.parent().map(|p| p.to_string_lossy().into_owned())
     }
 
+    /// Finds the appropriate template and row information for a given platform and command.
     pub fn get_template_for_command(
         &self,
         platform: &str,
@@ -164,6 +186,7 @@ impl CliTable {
         None
     }
 
+    /// Loads a CLI table from an index file and compiles all command regexes.
     pub fn from_file(fname: &str) -> Result<Self, Box<dyn Error>> {
         let parsed_cli_table = ParsedCliTable::from_file(fname)?;
         let tables = vec![parsed_cli_table];

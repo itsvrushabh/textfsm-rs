@@ -13,25 +13,33 @@ pub mod cli_table;
 pub mod varsubst;
 pub use cli_table::CliTable;
 
+/// Represents a single row of extracted data from a TextFSM template.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[derive(Default)]
 pub struct DataRecord {
+    /// Map of value names to their extracted values.
     #[serde(flatten)]
     pub fields: HashMap<String, Value>,
+    /// An optional key used to identify the record, constructed from fields marked as 'Key'.
     #[serde(skip_deserializing)]
     pub record_key: Option<String>,
 }
 
 impl DataRecord {
+    /// Creates a new, empty `DataRecord`.
     pub fn new() -> Self {
         Default::default()
     }
 
+    /// Overwrites existing fields in this record with fields from another record.
     pub fn overwrite_from(&mut self, from: DataRecord) {
         for (k, v) in from.fields {
             self.fields.insert(k, v);
         }
     }
+
+    /// Compares two sets of records and returns differences.
+    /// Returns a tuple of (fields only in result, fields only in other).
     pub fn compare_sets(
         result: &[Self],
         other: &[Self],
@@ -71,6 +79,8 @@ impl DataRecord {
         (only_in_result, only_in_other)
     }
 
+    /// Inserts a single string value into the record.
+    /// If the key already exists, it converts the value to a list or appends to it.
     pub fn insert(&mut self, name: String, value: String) {
         use std::collections::hash_map::Entry;
         match self.fields.entry(name) {
@@ -89,6 +99,7 @@ impl DataRecord {
         }
     }
 
+    /// Appends a `Value` to the record.
     pub fn append_value(&mut self, name: String, value: Value) {
         use std::collections::hash_map::Entry;
         match self.fields.entry(name.clone()) {
@@ -122,26 +133,34 @@ impl DataRecord {
         }
     }
 
+    /// Removes a field from the record.
     pub fn remove(&mut self, key: &str) {
         self.fields.remove(key);
     }
+
+    /// Returns an iterator over the field names.
     pub fn keys(&self) -> std::collections::hash_map::Keys<'_, String, Value> {
         self.fields.keys()
     }
 
+    /// Retrieves a reference to a field's value.
     pub fn get(&self, key: &str) -> Option<&Value> {
         self.fields.get(key)
     }
 
+    /// Returns an iterator over the record's fields.
     pub fn iter(&self) -> std::collections::hash_map::Iter<'_, String, Value> {
         self.fields.iter()
     }
 }
 
+/// Represents an extracted value, which can be either a single string or a list of strings.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum Value {
+    /// A single extracted string.
     Single(String),
+    /// A list of extracted strings (used for fields with 'List' option).
     List(Vec<String>),
 }
 
@@ -155,26 +174,39 @@ impl fmt::Display for Value {
     }
 }
 
+/// The compiled TextFSM parser containing value definitions and state machines.
 #[derive(Parser, Debug, Default, Clone)]
 #[grammar = "textfsm.pest"]
 pub struct TextFSMParser {
+    /// Definitions of all values declared in the template.
     pub values: HashMap<String, ValueDefinition>,
+    /// List of value names that are marked as 'Required'.
     pub mandatory_values: Vec<String>,
+    /// Compiled state machine states.
     pub states: HashMap<String, StateCompiled>,
 }
 
+/// The runtime engine for TextFSM parsing.
 #[derive(Debug, Default, Clone)]
 pub struct TextFSM {
+    /// The underlying compiled parser.
     pub parser: TextFSMParser,
+    /// The current state of the engine.
     pub curr_state: String,
+    /// The record currently being populated.
     pub curr_record: DataRecord,
+    /// Record containing values to be 'filled down' to subsequent records.
     pub filldown_record: DataRecord,
+    /// List of all successfully parsed records.
     pub records: Vec<DataRecord>,
 }
 
+/// Action to take regarding the current line of input.
 #[derive(Debug, PartialEq, Clone)]
 pub enum LineAction {
+    /// Continue processing subsequent rules in the current state for the same line.
     Continue,
+    /// Move to the next line of input, optionally transitioning to a new state.
     Next(Option<NextState>),
 }
 
@@ -184,68 +216,101 @@ impl Default for LineAction {
     }
 }
 
+/// Action to take regarding record lifecycle.
 #[derive(Debug, Default, PartialEq, Clone)]
 pub enum RecordAction {
+    /// No action on the record.
     #[default]
     NoRecord,
+    /// Save the current record and start a new one.
     Record,
+    /// Clear the current record (respecting Filldown).
     Clear,
+    /// Clear all values in the current record including Filldown.
     Clearall,
 }
 
+/// Represents the next state or an error condition.
 #[derive(Debug, PartialEq, Clone)]
 pub enum NextState {
+    /// Transition to an error state with an optional message.
     Error(Option<String>),
+    /// Transition to a named state (e.g., 'Start', 'EOF').
     NamedState(String),
 }
 
+/// Combines line and record actions for a rule match.
 #[derive(Debug, Default, PartialEq, Clone)]
 pub struct RuleTransition {
     line_action: LineAction,
     record_action: RecordAction,
 }
 
+/// A single rule within a TextFSM state.
 #[derive(Debug, Default, PartialEq, Clone)]
 pub struct StateRule {
+    /// The regex pattern to match against the input line.
     rule_match: String,
+    /// The transition to perform if the rule matches.
     transition: RuleTransition,
 }
 
+/// Metadata and regex definition for an extracted value.
 #[derive(Debug, Default, PartialEq, Clone)]
 pub struct ValueDefinition {
+    /// Name of the value.
     name: String,
+    /// Whether the value should be preserved across records until overwritten.
     is_filldown: bool,
+    /// Whether this value is part of the record's unique key.
     is_key: bool,
+    /// Whether a record must have this value populated to be valid.
     is_required: bool,
+    /// Whether this value can collect multiple matches into a list.
     is_list: bool,
+    /// Whether this value should be filled up into previous records.
     is_fillup: bool,
+    /// The regex pattern used to extract this value.
     regex_pattern: String,
+    /// Original raw options string.
     options: Option<String>,
 }
 
+/// Wrapper for different regex engines (standard or fancy for lookarounds).
 #[derive(Debug, Clone)]
 pub enum MultiRegex {
+    /// Standard Rust regex.
     Classic(regex::Regex),
+    /// fancy-regex for advanced features like lookahead/lookbehind.
     Fancy(fancy_regex::Regex),
 }
 
+/// A compiled version of a `StateRule` ready for execution.
 #[derive(Debug, Clone)]
 pub struct StateRuleCompiled {
     _rule_match: String,
     _expanded_rule_match: String,
+    /// Variables captured by this rule.
     match_variables: Vec<String>,
+    /// The compiled regex (if any).
     maybe_regex: Option<MultiRegex>,
+    /// The transition to perform.
     transition: RuleTransition,
 }
 
+/// A compiled state containing a list of rules.
 #[derive(Debug, Clone)]
 pub struct StateCompiled {
+    /// Name of the state.
     name: String,
+    /// Rules belonging to this state.
     rules: Vec<StateRuleCompiled>,
 }
 
+/// Transformation options for extracted records.
 #[derive(Debug, Clone)]
 pub enum DataRecordConversion {
+    /// Convert all field names to lowercase.
     LowercaseKeys,
 }
 
@@ -594,6 +659,8 @@ impl TextFSMParser {
         }
         Ok((vals, mandatory_values))
     }
+
+    /// Parses and compiles a TextFSM template from a file.
     pub fn from_file(fname: &str) -> Result<Self> {
         // println!("Path: {}", &fname);
         let template = std::fs::read_to_string(fname)?;
@@ -695,6 +762,7 @@ impl TextFSMParser {
 }
 
 impl TextFSM {
+    /// Creates a new `TextFSM` instance from a template file.
     pub fn from_file(fname: &str) -> Result<Self> {
         let parser = TextFSMParser::from_file(fname)?;
         let curr_state = "Start".to_string();
@@ -705,6 +773,7 @@ impl TextFSM {
         })
     }
 
+    /// Sets the current state of the engine.
     pub fn set_curr_state(&mut self, state_name: &str) -> Result<()> {
         if state_name != "End"
             && !self.parser.states.contains_key(state_name) {
@@ -733,6 +802,7 @@ impl TextFSM {
         self.parser.values.get(value_name).map(|val| val.is_list)
     }
 
+    /// Optimized value insertion into records.
     pub fn insert_value_optimized(
         &self,
         typ: &str,
@@ -780,6 +850,7 @@ impl TextFSM {
         Ok(())
     }
 
+    /// Processes a single line of input against the current state's rules.
     pub fn parse_line(&mut self, aline: &str) -> Result<Option<NextState>> {
         let maybe_next_state: Option<NextState> = None;
 
@@ -990,6 +1061,7 @@ impl TextFSM {
         Ok(maybe_next_state)
     }
 
+    /// Returns a new vector of records with all field names converted to lowercase.
     pub fn lowercase_keys(src: &Vec<DataRecord>) -> Vec<DataRecord> {
         let mut out = vec![];
 
@@ -1005,6 +1077,11 @@ impl TextFSM {
         out
     }
 
+    /// Parses an entire file and returns the extracted records.
+    /// 
+    /// # Arguments
+    /// * `fname` - Path to the data file to parse.
+    /// * `conversion` - Optional transformation to apply to the results.
     pub fn parse_file(
         &mut self,
         fname: &str,

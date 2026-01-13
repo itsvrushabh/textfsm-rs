@@ -3,18 +3,32 @@ pub use pest::iterators::Pair;
 pub use pest::Parser;
 use pest_derive::Parser;
 
+/// A parser for strings containing TextFSM variable substitutions.
+/// 
+/// Handles formats like `$VAR`, `${VAR}`, and escaped `$$`.
 #[derive(Parser)]
 #[grammar = "varsubst.pest"]
 pub struct VariableParser;
 
+/// Represents a part of a parsed variable substitution string.
 #[derive(Debug, PartialEq)]
 pub enum ParseChunk {
+    /// A literal dollar sign (escaped `$$`).
     DollarDollar,
+    /// A variable reference (e.g., `VAR`).
     Variable(String),
+    /// Regular literal text.
     Text(String),
 }
 
 impl VariableParser {
+    /// Parses a string containing `$` variable substitutions into a list of chunks.
+    /// 
+    /// # Arguments
+    /// * `input` - The string to parse.
+    /// 
+    /// # Returns
+    /// A vector of `ParseChunk` or a Pest error.
     pub fn parse_dollar_string(input: &str) -> Result<Vec<ParseChunk>, Error<Rule>> {
         let mut out: Vec<ParseChunk> = vec![];
         let pairs = VariableParser::parse(Rule::main, input)?;
