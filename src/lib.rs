@@ -44,10 +44,10 @@ impl<R: std::io::BufRead> Iterator for TextFsmIter<R> {
                                     "Error state reached! msg: {:?}",
                                     msg
                                 ))));
-                            } else if let NextState::NamedState(name) = next_state {
-                                if let Err(e) = self.fsm.set_curr_state(&name) {
-                                    return Some(Err(e));
-                                }
+                            } else if let NextState::NamedState(name) = next_state
+                                && let Err(e) = self.fsm.set_curr_state(&name)
+                            {
+                                return Some(Err(e));
                             }
                         }
                         Ok(None) => {}
