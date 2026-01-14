@@ -14,24 +14,8 @@ name: "CodeQL"
 on:
   push:
     branches: [ "main" ]
-    paths:
-      - 'src/**'
-      - 'examples/**'
-      - 'tests/**'
-      - 'benches/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - '.github/workflows/codeql.yml'
   pull_request:
     branches: [ "main" ]
-    paths:
-      - 'src/**'
-      - 'examples/**'
-      - 'tests/**'
-      - 'benches/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - '.github/workflows/codeql.yml'
   schedule:
     - cron: '43 4 * * 5'
   workflow_dispatch:
@@ -66,9 +50,14 @@ jobs:
         languages: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
         queries: security-extended,security-and-quality
+        tools: latest
 
     - name: Build
-      run: cargo build --all-targets
+      run: |
+        cargo clean
+        cargo build --all-features --all-targets
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
