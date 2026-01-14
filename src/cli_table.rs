@@ -125,22 +125,24 @@ impl CliTable {
             return String::new();
         }
 
-        let chars: Vec<char> = input.chars().collect();
-        let mut result = String::new();
+        let count = input.chars().count();
+        let mut result = String::with_capacity(count * 4);
 
-        for c in chars.iter() {
+        for c in input.chars() {
             result.push('(');
-            result.push(*c);
+            result.push(c);
         }
 
-        result.push_str(&")?".repeat(chars.len()));
+        for _ in 0..count {
+            result.push_str(")?");
+        }
 
         result
     }
 
     /// Expands command abbreviations inside `[[ ]]` into nested optional regex groups.
     fn expand_brackets(input: &str) -> String {
-        let mut result = String::new();
+        let mut result = String::with_capacity(input.len());
         let mut current_pos = 0;
 
         while let Some(start) = input[current_pos..].find("[[") {
