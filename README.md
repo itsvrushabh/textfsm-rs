@@ -1,6 +1,7 @@
 # textfsm-rs
 
 [![Rust](https://github.com/itsvrushabh/textfsm-rs/actions/workflows/rust.yml/badge.svg)](https://github.com/itsvrushabh/textfsm-rs/actions/workflows/rust.yml)
+[![Docs](https://docs.rs/textfsm-rs/badge.svg)](https://docs.rs/textfsm-rs)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 A robust, performant, and safe Rust implementation of [TextFSM](https://github.com/google/textfsm). This library is designed to parse semi-structured text—specifically output from networking device CLI commands—into structured programmatic data (JSON, YAML, or Rust HashMaps).
@@ -97,6 +98,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## Documentation
 
+*   [API Documentation](https://docs.rs/textfsm-rs) - Official crate documentation on docs.rs.
 *   [Usage Guide](docs/usage.md) - Detailed examples and API usage.
 *   [Creating Templates](docs/creating_templates.md) - Syntax guide for writing .textfsm files.
 *   [Advanced Examples](docs/advanced_examples.md) - Patterns for complex parsing scenarios.
