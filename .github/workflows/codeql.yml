@@ -51,11 +51,14 @@ jobs:
       matrix:
         include:
         - language: rust
-          build-mode: autobuild
+          build-mode: manual
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
@@ -64,7 +67,8 @@ jobs:
         build-mode: ${{ matrix.build-mode }}
         queries: security-extended,security-and-quality
 
+    - name: Build
+      run: cargo build --all-targets
+
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
-      with:
-        category: "/language:${{matrix.language}}"
