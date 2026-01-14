@@ -51,7 +51,7 @@ jobs:
       matrix:
         include:
         - language: rust
-          build-mode: autoclean
+          build-mode: autobuild
 
     steps:
     - name: Checkout repository
