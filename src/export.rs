@@ -91,9 +91,13 @@ fn export_html(records: &[DataRecord]) -> Result<String, TextFsmError> {
         html.push_str("<tr>");
         for h in &headers {
             let val = if let Some(v) = rec.get(h) {
-                // Basic HTML escaping could be added here if needed,
-                // for now simple string conversion.
-                v.to_string()
+                let value_str = v.to_string();
+                value_str
+                    .replace('&', "&amp;")
+                    .replace('<', "&lt;")
+                    .replace('>', "&gt;")
+                    .replace('"', "&quot;")
+                    .replace('\'', "&apos;")
             } else {
                 String::new()
             };

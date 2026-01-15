@@ -54,3 +54,24 @@ Start
     assert!(xml.contains("</record>"));
     assert!(xml.contains("</results>"));
 }
+
+#[test]
+fn test_export_escaping() {
+    let template = r#"Value MSG (.+)
+
+Start
+  ^Message: ${MSG} -> Record
+"#;
+    let data = "Message: <Hello> & \"World\"\n";
+
+    let mut fsm = TextFSM::from_string(template).unwrap();
+    let results = fsm.parse_string(data, None).unwrap();
+
+    // XML
+    let xml = results.export(OutputFormat::Xml).unwrap();
+    assert!(xml.contains("&lt;Hello&gt; &amp; &quot;World&quot;"));
+
+    // HTML
+    let html = results.export(OutputFormat::Html).unwrap();
+    assert!(html.contains("&lt;Hello&gt; &amp; &quot;World&quot;"));
+}
