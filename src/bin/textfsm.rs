@@ -56,80 +56,45 @@ enum Commands {
 }
 
 fn main() -> anyhow::Result<()> {
-    env_logger::init();
-    let cli = Cli::parse();
+    let matches = clap::Command::new("textfsm")
+        .version("0.1.0")
+        .author("Author <author@example.com>")
+        .about("TextFSM utility")
+        .arg(
+            clap::Arg::new("template")
+                .help("The template file")
+                .required(true)
+                .index(1),
+        )
+        .arg(
+            clap::Arg::new("input")
+                .help("The input file")
+                .required(false)
+                .index(2),
+        )
+        .get_matches();
 
-    match &cli.command {
-        Commands::Parse {
-            template,
+    let template = matches.get_one::<String>("template").unwrap();
+    let fsm = TextFSM::from_file(template)?;
 
-            input,
-
-            lowercase,
-        } => {
-            let mut fsm = TextFSM::from_file(template)?;
-
-            let conversion = if *lowercase {
-                Some(DataRecordConversion::LowercaseKeys)
-            } else {
-                None
-            };
-
-            let results = fsm.parse_file(input, conversion)?;
-
-            match cli.format {
-                OutputFormat::Json => {
-                    println!("{}", serde_json::to_string_pretty(&results)?);
-                }
-
-                OutputFormat::Yaml => {
-                    println!("{}", serde_yml::to_string(&results)?);
-                }
-            }
+    if let Some(input) = matches.get_one::<String>("input") {
+        // We need mutable access for parse_file, but parse_reader takes ownership or mutable ref?
+        // parse_file takes &mut self.
+        // from_file returns a new instance.
+        let mut fsm = fsm;
+        let results = fsm.parse_file(input, Some(DataRecordConversion::LowercaseKeys))?;
+        println!("{}", serde_yaml::to_string(&results)?);
+    } else {
+        let stdin = std::io::stdin();
+        let reader = stdin.lock();
+        // parse_reader consumes self.
+        let iter = fsm.parse_reader(reader);
+        let mut results = Vec::new();
+        for record in iter {
+            results.push(record?);
         }
-
-        Commands::Auto {
-            index,
-
-            platform,
-
-            command,
-
-            input,
-        } => {
-            let cli_table = CliTable::from_file(index)?;
-
-            if let Some((template_dir, row)) = cli_table.get_template_for_command(platform, command)
-            {
-                if let Some(template_name) = row.templates.first() {
-                    let template_path = PathBuf::from(&template_dir).join(template_name);
-
-                    eprintln!("Using template: {}", template_path.display());
-
-                    let mut fsm = TextFSM::from_file(&template_path)?;
-
-                    let results =
-                        fsm.parse_file(input, Some(DataRecordConversion::LowercaseKeys))?;
-
-                    match cli.format {
-                        OutputFormat::Json => {
-                            println!("{}", serde_json::to_string_pretty(&results)?);
-                        }
-
-                        OutputFormat::Yaml => {
-                            println!("{}", serde_yml::to_string(&results)?);
-                        }
-                    }
-                } else {
-                    anyhow::bail!("No template found in index row");
-                }
-            } else {
-                anyhow::bail!(
-                    "No matching template found for platform '{}' and command '{}'",
-                    platform,
-                    command
-                );
-            }
+        if !results.is_empty() {
+            println!("{}", serde_yaml::to_string(&results)?);
         }
     }
 

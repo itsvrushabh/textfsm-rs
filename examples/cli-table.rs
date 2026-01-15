@@ -20,7 +20,7 @@ fn verify(
 ) -> Result<VerifyResult> {
     let yaml = std::fs::read_to_string(yaml_verify_name).expect("YAML File read failed");
 
-    if let Ok(yaml_map) = serde_yml::from_str::<ParsedSample>(&yaml) {
+    if let Ok(yaml_map) = serde_yaml::from_str::<ParsedSample>(&yaml) {
         let mut result: Vec<DataRecord> = vec![];
 
         for short_template_name in &row.templates {

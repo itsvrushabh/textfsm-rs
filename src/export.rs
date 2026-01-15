@@ -6,7 +6,7 @@ use std::collections::BTreeSet;
 pub enum OutputFormat {
     /// JSON format (using serde_json)
     Json,
-    /// YAML format (using serde_yml)
+    /// YAML format (using serde_yaml)
     Yaml,
     /// Comma-Separated Values (headers sorted alphabetically)
     Csv,
@@ -29,8 +29,9 @@ impl TextFsmExport for Vec<DataRecord> {
         match format {
             OutputFormat::Json => serde_json::to_string_pretty(self)
                 .map_err(|e| TextFsmError::InternalError(e.to_string())),
-            OutputFormat::Yaml => serde_yml::to_string(self)
-                .map_err(|e| TextFsmError::InternalError(e.to_string())),
+            OutputFormat::Yaml => {
+                serde_yaml::to_string(self).map_err(|e| TextFsmError::InternalError(e.to_string()))
+            }
             OutputFormat::Csv => export_csv(self),
             OutputFormat::Text => export_text(self),
             OutputFormat::Html => export_html(self),
@@ -170,7 +171,11 @@ fn export_text(records: &[DataRecord]) -> Result<String, TextFsmError> {
 
     // Separator
     for (i, _) in headers.iter().enumerate() {
-        out.push_str(&format!("{:<width$}  ", "-".repeat(widths[i]), width = widths[i]));
+        out.push_str(&format!(
+            "{:<width$}  ",
+            "-".repeat(widths[i]),
+            width = widths[i]
+        ));
     }
     out.truncate(out.trim_end().len());
     out.push('\n');

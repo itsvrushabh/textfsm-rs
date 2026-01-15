@@ -877,9 +877,8 @@ impl TextFSMParser {
     pub fn from_file<P: AsRef<std::path::Path>>(fname: P) -> Result<Self> {
         let path = fname.as_ref();
         let content = std::fs::read_to_string(path)?;
-        Self::from_string(&content).map_err(|e| {
-            TextFsmError::ParseError(format!("file {} Error: {}", path.display(), e))
-        })
+        Self::from_string(&content)
+            .map_err(|e| TextFsmError::ParseError(format!("file {} Error: {}", path.display(), e)))
     }
 }
 

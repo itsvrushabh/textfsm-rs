@@ -37,10 +37,7 @@ Interface GigabitEthernet0/2 is down
         "GigabitEthernet0/2"
     );
     assert_eq!(result[1].fields.get("STATUS").unwrap().to_string(), "down");
-    assert_eq!(
-        result[1].fields.get("IP").unwrap().to_string(),
-        "10.0.0.1"
-    );
+    assert_eq!(result[1].fields.get("IP").unwrap().to_string(), "10.0.0.1");
 }
 
 #[test]
@@ -118,7 +115,10 @@ fn test_clitable_parsing() {
     let result = cli_table.get_template_for_command("VendorA", "sh ve");
     assert!(result.is_some());
     let (_, row) = result.unwrap();
-    assert_eq!(row.templates, vec!["clitable_templateA", "clitable_templateB"]);
+    assert_eq!(
+        row.templates,
+        vec!["clitable_templateA", "clitable_templateB"]
+    );
 
     // Test VendorB sh ver
     let result = cli_table.get_template_for_command("VendorB", "show version");
