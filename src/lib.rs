@@ -10,8 +10,10 @@ use std::collections::{HashMap, VecDeque};
 use std::fmt;
 
 pub mod cli_table;
+pub mod export;
 pub mod varsubst;
 pub use cli_table::CliTable;
+pub use export::{OutputFormat, TextFsmExport};
 
 /// An iterator that parses input line-by-line and yields `DataRecord`s.
 pub struct TextFsmIter<R> {
