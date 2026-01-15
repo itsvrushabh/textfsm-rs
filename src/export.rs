@@ -34,8 +34,9 @@ impl TextFsmExport for Vec<DataRecord> {
             OutputFormat::Json => serde_json::to_string_pretty(self)
                 .map_err(|e| TextFsmError::InternalError(e.to_string())),
             #[cfg(feature = "yaml")]
-            OutputFormat::Yaml => serde_yaml::to_string(self)
-                .map_err(|e| TextFsmError::InternalError(e.to_string())),
+            OutputFormat::Yaml => {
+                serde_yaml::to_string(self).map_err(|e| TextFsmError::InternalError(e.to_string()))
+            }
             #[cfg(feature = "csv_export")]
             OutputFormat::Csv => export_csv(self),
             OutputFormat::Text => export_text(self),
