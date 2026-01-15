@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
-use textfsm_rs::{CliTable, DataRecordConversion, TextFSM};
+use textfsm_rs::{DataRecordConversion, TextFSM};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
