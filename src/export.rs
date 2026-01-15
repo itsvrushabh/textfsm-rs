@@ -5,10 +5,13 @@ use std::collections::BTreeSet;
 #[derive(Debug, Clone, Copy)]
 pub enum OutputFormat {
     /// JSON format (using serde_json)
+    #[cfg(feature = "json")]
     Json,
     /// YAML format (using serde_yaml)
+    #[cfg(feature = "yaml")]
     Yaml,
     /// Comma-Separated Values (headers sorted alphabetically)
+    #[cfg(feature = "csv_export")]
     Csv,
     /// Simple ASCII table
     Text,
@@ -27,11 +30,13 @@ pub trait TextFsmExport {
 impl TextFsmExport for Vec<DataRecord> {
     fn export(&self, format: OutputFormat) -> Result<String, TextFsmError> {
         match format {
+            #[cfg(feature = "json")]
             OutputFormat::Json => serde_json::to_string_pretty(self)
                 .map_err(|e| TextFsmError::InternalError(e.to_string())),
-            OutputFormat::Yaml => {
-                serde_yaml::to_string(self).map_err(|e| TextFsmError::InternalError(e.to_string()))
-            }
+            #[cfg(feature = "yaml")]
+            OutputFormat::Yaml => serde_yaml::to_string(self)
+                .map_err(|e| TextFsmError::InternalError(e.to_string())),
+            #[cfg(feature = "csv_export")]
             OutputFormat::Csv => export_csv(self),
             OutputFormat::Text => export_text(self),
             OutputFormat::Html => export_html(self),
@@ -50,6 +55,7 @@ fn get_headers(records: &[DataRecord]) -> Vec<String> {
     headers.into_iter().collect()
 }
 
+#[cfg(feature = "csv_export")]
 fn export_csv(records: &[DataRecord]) -> Result<String, TextFsmError> {
     let headers = get_headers(records);
     let mut wtr = csv::Writer::from_writer(vec![]);

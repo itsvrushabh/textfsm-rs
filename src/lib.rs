@@ -9,9 +9,11 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
 
+#[cfg(feature = "clitable")]
 pub mod cli_table;
 pub mod export;
 pub mod varsubst;
+#[cfg(feature = "clitable")]
 pub use cli_table::CliTable;
 pub use export::{OutputFormat, TextFsmExport};
 

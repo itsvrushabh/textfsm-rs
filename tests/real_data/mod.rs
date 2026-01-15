@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::Path;
-use textfsm_rs::{CliTable, TextFSM};
+#[cfg(feature = "clitable")]
+use textfsm_rs::CliTable;
+use textfsm_rs::TextFSM;
 
 fn get_data_dir() -> String {
     "tests/basic_template/cli".to_string()
@@ -49,6 +51,7 @@ fn test_individual_templates() {
 }
 
 #[test]
+#[cfg(feature = "clitable")]
 fn test_cli_table_index() {
     let data_dir = get_data_dir();
     let index_path = format!("{}/index", data_dir);

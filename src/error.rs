@@ -8,6 +8,7 @@ pub enum TextFsmError {
     #[error("I/O error: {0}")]
     IoError(#[from] io::Error),
     /// Errors related to CSV parsing.
+    #[cfg(any(feature = "clitable", feature = "csv_export"))]
     #[error("CSV error: {0}")]
     CsvError(#[from] csv::Error),
     /// Errors occurring during the parsing of templates or variable strings.

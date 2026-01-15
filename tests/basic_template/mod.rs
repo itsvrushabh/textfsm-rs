@@ -103,6 +103,7 @@ interface Vlan1
 }
 
 #[test]
+#[cfg(feature = "clitable")]
 fn test_clitable_parsing() {
     use textfsm_rs::CliTable;
     let index_path = "tests/basic_template/template/parseindex_index";
@@ -134,6 +135,7 @@ fn test_clitable_parsing() {
 }
 
 #[test]
+#[cfg(feature = "clitable")]
 fn test_clitable_parse_fail() {
     use textfsm_rs::CliTable;
     // Missing Template column (has Templatebogus instead)

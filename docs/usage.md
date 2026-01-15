@@ -14,6 +14,22 @@ textfsm-rs = { git = "https://github.com/itsvrushabh/textfsm-rs.git" }
 serde_yaml = "0.9" # Recommended for YAML serialization
 ```
 
+### Feature Flags
+
+To reduce dependencies, you can disable default features and pick only what you need.
+
+```toml
+[dependencies]
+textfsm-rs = { git = "...", default-features = false, features = ["clitable", "yaml"] }
+```
+
+Available features:
+-   `clitable`: Enables `CliTable` functionality (depends on `csv`).
+-   `yaml`: Enables YAML export support (depends on `serde_yaml`).
+-   `json`: Enables JSON export support (depends on `serde_json`).
+-   `csv_export`: Enables CSV export support (depends on `csv`).
+-   `binary`: Enables dependencies required for the CLI binary (`clap`, `anyhow`, etc.).
+
 ### Basic Parsing
 
 To parse a raw text file using a TextFSM template:
