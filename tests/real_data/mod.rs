@@ -23,11 +23,11 @@ fn test_individual_templates() {
                 println!("Testing template: {}", template_path);
 
                 let mut textfsm = TextFSM::from_file(template_path)
-                    .expect(&format!("Failed to parse template {}", template_path));
+                    .unwrap_or_else(|_| panic!("Failed to parse template {}", template_path));
 
                 let result = textfsm
                     .parse_file(&example_path, None)
-                    .expect(&format!("Failed to parse data file {}", example_path));
+                    .unwrap_or_else(|_| panic!("Failed to parse data file {}", example_path));
 
                 assert!(
                     !result.is_empty(),

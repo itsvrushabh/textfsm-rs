@@ -8,9 +8,7 @@ fn benchmark_parsing(c: &mut Criterion) {
 
     // Bench 1: Compilation
     c.bench_function("compile cisco version template", |b| {
-        b.iter(|| {
-            TextFSM::from_file(black_box(template_path)).unwrap()
-        })
+        b.iter(|| TextFSM::from_file(black_box(template_path)).unwrap())
     });
 
     // Bench 2: Parsing (Template pre-compiled)

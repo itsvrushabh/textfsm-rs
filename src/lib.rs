@@ -1174,12 +1174,11 @@ impl TextFSM {
         }
     }
 
-    /// Parses an entire file and returns the extracted records.
+    /// Parses input from a string.
     ///
     /// # Arguments
-    /// * `fname` - Path to the data file to parse.
+    /// * `input` - The input string to parse.
     /// * `conversion` - Optional transformation to apply to the results.
-    /// Parses input from a string.
     pub fn parse_string(
         &mut self,
         input: &str,
@@ -1216,6 +1215,11 @@ impl TextFSM {
         }
     }
 
+    /// Parses an entire file and returns the extracted records.
+    ///
+    /// # Arguments
+    /// * `fname` - Path to the data file to parse.
+    /// * `conversion` - Optional transformation to apply to the results.
     pub fn parse_file<P: AsRef<std::path::Path>>(
         &mut self,
         fname: P,

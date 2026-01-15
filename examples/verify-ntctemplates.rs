@@ -13,10 +13,10 @@ enum VerifyResult {
 }
 
 fn verify(template_name: &str, data_name: &str, yaml_verify_name: &str) -> Result<VerifyResult> {
-    let mut textfsm = TextFSM::from_file(&template_name)?;
-    let yaml = std::fs::read_to_string(&yaml_verify_name).expect("YAML File read failed");
+    let mut textfsm = TextFSM::from_file(template_name)?;
+    let yaml = std::fs::read_to_string(yaml_verify_name).expect("YAML File read failed");
 
-    let result = textfsm.parse_file(&data_name, Some(DataRecordConversion::LowercaseKeys))?;
+    let result = textfsm.parse_file(data_name, Some(DataRecordConversion::LowercaseKeys))?;
     println!("RESULT: {:?}\n", &result);
     if let Ok(yaml_map) = serde_yml::from_str::<ParsedSample>(&yaml) {
         if result == yaml_map.parsed_sample {
@@ -80,7 +80,7 @@ fn collect_bare_directories(base_dir: &str) -> Result<Vec<String>> {
         let entry = entry?;
         let path = entry.path();
 
-        if path.is_dir() && !path.extension().is_some() {
+        if path.is_dir() && path.extension().is_none() {
             // No extension
             if let Some(dir_name) = path.file_name().and_then(|name| name.to_str()) {
                 dir_names.push(dir_name.to_string());
@@ -116,10 +116,8 @@ fn main() {
 
     for test_family in &test_family_names {
         let test_family_dir = format!("{}/tests/{}/", &root_path, test_family);
-        let test_set_names = collect_bare_directories(&test_family_dir).expect(&format!(
-            "Could not scan test family dir {}",
-            &test_family_dir
-        ));
+        let test_set_names = collect_bare_directories(&test_family_dir)
+            .unwrap_or_else(|_| panic!("Could not scan test family dir {}", &test_family_dir));
         for test_set in &test_set_names {
             let candidate_template_name = format!("{}_{}", test_family, test_set);
             if template_names_set.contains(&candidate_template_name) {
