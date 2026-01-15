@@ -11,7 +11,7 @@ Add `textfsm-rs` to your `Cargo.toml`:
 ```toml
 [dependencies]
 textfsm-rs = { git = "https://github.com/itsvrushabh/textfsm-rs.git" }
-serde_yml = "0.0.12" # Recommended for YAML serialization
+serde_yaml = "0.9" # Recommended for YAML serialization
 ```
 
 ### Basic Parsing
@@ -97,7 +97,7 @@ Parse a raw text file using a specific TextFSM template.
 
 **Usage:**
 ```bash
-textfsm parse --template <TEMPLATE_PATH> --input <DATA_PATH> [--lowercase] [--format <json|yaml>]
+textfsm parse --template <TEMPLATE_PATH> --input <DATA_PATH> [--lowercase] [--format <json|yaml|csv|text|html|xml>]
 ```
 
 **Example:**
@@ -106,6 +106,41 @@ textfsm parse \
   --template templates/cisco_ios_show_version.textfsm \
   --input data/show_version.txt \
   --format json
+```
+
+### Output Examples
+
+**JSON Output:**
+```json
+[
+  {
+    "version": "16.9.4",
+    "uptime": "1 week, 2 days, 3 hours, 4 minutes",
+    "hostname": "Router01"
+  }
+]
+```
+
+**YAML Output:**
+```yaml
+- version: 16.9.4
+  uptime: 1 week, 2 days, 3 hours, 4 minutes
+  hostname: Router01
+```
+
+**CSV Output:**
+```csv
+hostname,uptime,version
+Router01,"1 week, 2 days, 3 hours, 4 minutes",16.9.4
+```
+
+**Text (ASCII Table) Output:**
+```text
++----------+------------------------------------+---------+
+| hostname | uptime                             | version |
++----------+------------------------------------+---------+
+| Router01 | 1 week, 2 days, 3 hours, 4 minutes | 16.9.4  |
++----------+------------------------------------+---------+
 ```
 
 #### 2. `auto`: Automatic Template Selection
@@ -119,7 +154,7 @@ textfsm auto \
   --platform <PLATFORM> \
   --command <COMMAND> \
   --input <DATA_PATH> \
-  [--format <json|yaml>]
+  [--format <json|yaml|csv|text|html|xml>]
 ```
 
 **Example:**
@@ -136,4 +171,8 @@ textfsm auto \
 *   `--format`: Choose the output format.
     *   `yaml` (default): Human-readable YAML.
     *   `json`: JSON output, useful for piping to `jq`.
+    *   `csv`: Comma-Separated Values (headers sorted alphabetically).
+    *   `text`: ASCII table format (similar to MySQL output).
+    *   `html`: HTML table with Bootstrap styling.
+    *   `xml`: XML output.
 *   `--lowercase` (parse only): Convert all keys in the output to lowercase.

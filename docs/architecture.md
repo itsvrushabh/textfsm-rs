@@ -53,6 +53,10 @@ State names are managed as reused strings to avoid repeated allocation during tr
 
 -   **`pest`**: PEG parser for the TextFSM template syntax.
 -   **`fancy-regex`**: Support for Python-style regex features (lookahead/behind) required by many TextFSM templates.
--   **`serde` / `serde_yml` / `serde_json`**: Serialization support for structured output.
+-   **Serialization**:
+    -   `serde`: The core serialization framework.
+    -   `serde_yaml`: YAML serialization/deserialization.
+    -   `serde_json`: JSON serialization/deserialization.
+    -   Custom implementations in `src/export.rs` for CSV, Text, HTML, and XML formats.
 -   **`thiserror`**: Ergonomic error handling for the library.
 -   **`clap`**: Command-line argument parser for the binary.
