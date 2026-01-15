@@ -1,5 +1,3 @@
-use std::io::Write;
-use tempfile::NamedTempFile;
 use textfsm_rs::TextFSM;
 
 #[test]
@@ -19,10 +17,7 @@ Interface GigabitEthernet0/2 is down
   IP address is 10.0.0.1
 "#;
 
-    let mut tmp_template = NamedTempFile::new().unwrap();
-    write!(tmp_template, "{}", template).unwrap();
-
-    let mut fsm = TextFSM::from_file(tmp_template.path()).unwrap();
+    let mut fsm = TextFSM::from_string(template).unwrap();
     let result = fsm.parse_string(data, None).unwrap();
 
     assert_eq!(result.len(), 2);
@@ -72,10 +67,7 @@ interface Vlan1
  description Management
 "#;
 
-    let mut tmp_template = NamedTempFile::new().unwrap();
-    write!(tmp_template, "{}", template).unwrap();
-
-    let mut fsm = TextFSM::from_file(tmp_template.path()).unwrap();
+    let mut fsm = TextFSM::from_string(template).unwrap();
     let result = fsm.parse_string(data, None).unwrap();
 
     assert_eq!(result.len(), 4);

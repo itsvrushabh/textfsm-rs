@@ -47,7 +47,7 @@ pub struct CliTableRow {
 }
 
 impl ParsedCliTable {
-    fn example(fname: &Path) -> Result<Vec<CliTableRow>> {
+    fn parse(fname: &Path) -> Result<Vec<CliTableRow>> {
         use std::io::BufReader;
         let file = std::fs::File::open(fname)?;
         let reader = BufReader::new(file);
@@ -109,7 +109,7 @@ impl ParsedCliTable {
     pub fn from_file<P: AsRef<Path>>(fname: P) -> Result<Self> {
         let path = fname.as_ref();
         debug!("Loading cli table from {}", path.display());
-        let rows = Self::example(path)?;
+        let rows = Self::parse(path)?;
         Ok(ParsedCliTable {
             fname: path.to_string_lossy().into_owned(),
             rows,
@@ -182,7 +182,6 @@ impl CliTable {
         cmd: &str,
     ) -> Option<(String, CliTableRow)> {
         let plat_regex_list = self.platform_regex_rules.get(platform)?;
-        // .expect(&format!("Could not find platform {}", &platform));
         for rule in plat_regex_list {
             if rule.command_regex.is_match(cmd).expect("Fancy regex ok?") {
                 let row = self.tables[rule.table_index].rows[rule.row_index].clone();

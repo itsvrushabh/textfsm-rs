@@ -13,12 +13,7 @@ Start
 
     let data = "Name: Alice\nAge: 30\nName: Bob\nAge: 25\nName: Charlie\nAge: 40\n";
 
-    // Use a temporary file for the template because from_file requires a path
-    use std::io::Write;
-    let mut tmp_template = tempfile::NamedTempFile::new().unwrap();
-    write!(tmp_template, "{}", template).unwrap();
-
-    let fsm = TextFSM::from_file(tmp_template.path()).unwrap();
+    let fsm = TextFSM::from_string(template).unwrap();
 
     let reader = Cursor::new(data);
     let mut iter = fsm.parse_reader(reader);
@@ -58,11 +53,7 @@ Start
 
     let data = "Name: Dave";
 
-    use std::io::Write;
-    let mut tmp_template = tempfile::NamedTempFile::new().unwrap();
-    write!(tmp_template, "{}", template).unwrap();
-
-    let fsm = TextFSM::from_file(tmp_template.path()).unwrap();
+    let fsm = TextFSM::from_string(template).unwrap();
     let reader = Cursor::new(data);
     let mut iter = fsm.parse_reader(reader);
 

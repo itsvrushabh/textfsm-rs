@@ -430,7 +430,6 @@ pub enum DataRecordConversion {
 
 impl TextFSMParser {
     fn _log_pair(indent: usize, pair: &Pair<'_, Rule>) {
-        // println!("Debug: {:#?}", &pair);
         let spaces = " ".repeat(indent);
         trace!("{}Rule:    {:?}", spaces, pair.as_rule());
         trace!("{}Span:    {:?}", spaces, pair.as_span());
@@ -684,22 +683,7 @@ impl TextFSMParser {
             name.ok_or_else(|| TextFsmError::InternalError("state must have a name".to_string()))?;
         Ok(StateCompiled { name, rules })
     }
-    /*
-    pub fn parse_state_defs(pair: &Pair<'_, Rule>, values: &HashMap<String, ValueDefinition>) {
-        // println!("=== STATE DEFINITIONS ===");
-        for pair in pair.clone().into_inner() {
-            match pair.as_rule() {
-                Rule::state_definition => {
-                    let state = Self::parse_and_compile_state_definition(&pair, values).unwrap();
-                    // println!("Compiled state: {:#?}", &state);
-                }
-                x => {
-                    panic!("state definition rule {:?} not supported", x);
-                }
-            }
-        }
-    }
-    */
+
     pub fn parse_value_definition(pair: &Pair<'_, Rule>) -> Result<ValueDefinition> {
         // println!("value definition");
         let mut name: Option<String> = None;
@@ -788,10 +772,9 @@ impl TextFSMParser {
         Ok((vals, mandatory_values))
     }
 
-    /// Parses and compiles a TextFSM template from a file.
-    pub fn from_file<P: AsRef<std::path::Path>>(fname: P) -> Result<Self> {
-        let path = fname.as_ref();
-        let mut template = std::fs::read_to_string(path)?;
+    /// Parses and compiles a TextFSM template from a string.
+    pub fn from_string(content: &str) -> Result<Self> {
+        let mut template = content.to_string();
         // pad with newlines, because dealing with a missing one within grammar is a PITA
         if !template.ends_with('\n') {
             template.push('\n');
@@ -884,16 +867,32 @@ impl TextFSMParser {
                     states,
                 })
             }
-            Err(e) => Err(TextFsmError::ParseError(format!(
-                "file {} Error: {}",
-                path.display(),
-                e
-            ))),
+            Err(e) => Err(TextFsmError::ParseError(format!("Error: {}", e))),
         }
+    }
+
+    /// Parses and compiles a TextFSM template from a file.
+    pub fn from_file<P: AsRef<std::path::Path>>(fname: P) -> Result<Self> {
+        let path = fname.as_ref();
+        let content = std::fs::read_to_string(path)?;
+        Self::from_string(&content).map_err(|e| {
+            TextFsmError::ParseError(format!("file {} Error: {}", path.display(), e))
+        })
     }
 }
 
 impl TextFSM {
+    /// Creates a new `TextFSM` instance from a template string.
+    pub fn from_string(content: &str) -> Result<Self> {
+        let parser = TextFSMParser::from_string(content)?;
+        let curr_state = "Start".to_string();
+        Ok(TextFSM {
+            parser,
+            curr_state,
+            ..Default::default()
+        })
+    }
+
     /// Creates a new `TextFSM` instance from a template file.
     pub fn from_file<P: AsRef<std::path::Path>>(fname: P) -> Result<Self> {
         let parser = TextFSMParser::from_file(fname)?;
@@ -993,6 +992,79 @@ impl TextFSM {
             filldown_record.fields.insert(name.clone(), ins_value);
         }
 
+        Ok(())
+    }
+
+    fn process_record_action(
+        curr_record: &mut DataRecord,
+        filldown_record: &mut DataRecord,
+        records: &mut VecDeque<DataRecord>,
+        mandatory_values: &[String],
+        values: &HashMap<String, ValueDefinition>,
+        action: RecordAction,
+    ) -> Result<()> {
+        match action {
+            RecordAction::Record => {
+                let mut mandatory_count = 0;
+                let number_of_values = curr_record.keys().len();
+
+                for k in mandatory_values {
+                    if curr_record.get(k).is_some() {
+                        mandatory_count += 1;
+                    }
+                }
+                if number_of_values > 0 {
+                    if mandatory_count == mandatory_values.len() {
+                        let mut new_rec: DataRecord = filldown_record.clone();
+                        /* swap with the current record */
+                        std::mem::swap(&mut new_rec, curr_record);
+                        // Set the values that aren't set yet - FIXME: this feature should be
+                        // possible to be disabled as "" and nothing are very different things.
+                        for v in values.values() {
+                            if new_rec.get(&v.name).is_none() {
+                                if v.is_list {
+                                    new_rec.fields.insert(v.name.clone(), Value::List(vec![]));
+                                } else {
+                                    new_rec
+                                        .fields
+                                        .insert(v.name.clone(), Value::Single(String::new()));
+                                }
+                            }
+                        }
+                        trace!("RECORD: {:?}", &new_rec);
+                        records.push_back(new_rec);
+                    } else {
+                        trace!("RECORD: no required fields set");
+                    }
+                } else {
+                    trace!("RECORD: record is empty, not dumping");
+                }
+            }
+            RecordAction::NoRecord => {} // Do nothing
+            RecordAction::Clear => {
+                let mut rem_keys: Vec<String> = vec![];
+                for (ref k, _v) in curr_record.iter() {
+                    if let Some(val) = values.get(*k) {
+                        if !val.is_filldown {
+                            rem_keys.push(k.to_string());
+                        }
+                    } else {
+                        return Err(TextFsmError::InternalError(format!(
+                            "is_filldown_value for {} failed",
+                            k
+                        )));
+                    }
+                }
+                for k in rem_keys {
+                    curr_record.remove(&k);
+                }
+            }
+            RecordAction::Clearall => {
+                // reset the current record
+                *curr_record = Default::default();
+                *filldown_record = Default::default();
+            }
+        }
         Ok(())
     }
 
@@ -1105,74 +1177,15 @@ impl TextFSM {
                 }
                 // println!("TRANS: {:?}", &transition);
 
-                match transition.record_action {
-                    RecordAction::Record => {
-                        let mut mandatory_count = 0;
-                        let number_of_values = self.curr_record.keys().len();
+                Self::process_record_action(
+                    &mut self.curr_record,
+                    &mut self.filldown_record,
+                    &mut self.records,
+                    &self.parser.mandatory_values,
+                    &self.parser.values,
+                    transition.record_action,
+                )?;
 
-                        for k in &self.parser.mandatory_values {
-                            if self.curr_record.get(k).is_some() {
-                                mandatory_count += 1;
-                            }
-                        }
-                        if number_of_values > 0 {
-                            if mandatory_count == self.parser.mandatory_values.len() {
-                                let mut new_rec: DataRecord = self.filldown_record.clone();
-                                /* swap with the current record */
-                                std::mem::swap(&mut new_rec, &mut self.curr_record);
-                                // Set the values that aren't set yet - FIXME: this feature should be
-                                // possible to be disabled as "" and nothing are very different things.
-                                for v in self.parser.values.values() {
-                                    if new_rec.get(&v.name).is_none() {
-                                        if self.is_list_value(&v.name).ok_or_else(|| {
-                                            TextFsmError::InternalError(format!(
-                                                "is_list_value for {} failed",
-                                                v.name
-                                            ))
-                                        })? {
-                                            new_rec
-                                                .fields
-                                                .insert(v.name.clone(), Value::List(vec![]));
-                                        } else {
-                                            new_rec.fields.insert(
-                                                v.name.clone(),
-                                                Value::Single(String::new()),
-                                            );
-                                        }
-                                    }
-                                }
-                                trace!("RECORD: {:?}", &new_rec);
-                                self.records.push_back(new_rec);
-                            } else {
-                                trace!("RECORD: no required fields set");
-                            }
-                        } else {
-                            trace!("RECORD: record is empty, not dumping");
-                        }
-                    }
-                    RecordAction::NoRecord => {} // Do nothing
-                    RecordAction::Clear => {
-                        let mut rem_keys: Vec<String> = vec![];
-                        for (ref k, _v) in self.curr_record.iter() {
-                            if !self.is_filldown_value(k).ok_or_else(|| {
-                                TextFsmError::InternalError(format!(
-                                    "is_filldown_value for {} failed",
-                                    k
-                                ))
-                            })? {
-                                rem_keys.push(k.to_string());
-                            }
-                        }
-                        for k in rem_keys {
-                            self.curr_record.remove(&k);
-                        }
-                    }
-                    RecordAction::Clearall => {
-                        // reset the current record
-                        self.curr_record = Default::default();
-                        self.filldown_record = Default::default();
-                    }
-                }
                 match transition.line_action {
                     LineAction::Next(x) => return Ok(ParseStatus::NextLine(x)),
                     LineAction::Continue(maybe_next_state) => {
