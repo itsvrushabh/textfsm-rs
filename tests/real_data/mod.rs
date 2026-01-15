@@ -3,7 +3,7 @@ use std::path::Path;
 use textfsm_rs::{CliTable, TextFSM};
 
 fn get_data_dir() -> String {
-    "tests/data/cli".to_string()
+    "tests/basic_template/cli".to_string()
 }
 
 #[test]
