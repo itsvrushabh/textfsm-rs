@@ -143,6 +143,38 @@ Router01,"1 week, 2 days, 3 hours, 4 minutes",16.9.4
 +----------+------------------------------------+---------+
 ```
 
+**HTML Output:**
+```html
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>hostname</th>
+      <th>uptime</th>
+      <th>version</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Router01</td>
+      <td>1 week, 2 days, 3 hours, 4 minutes</td>
+      <td>16.9.4</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+**XML Output:**
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+  <record>
+    <hostname>Router01</hostname>
+    <uptime>1 week, 2 days, 3 hours, 4 minutes</uptime>
+    <version>16.9.4</version>
+  </record>
+</root>
+```
+
 #### 2. `auto`: Automatic Template Selection
 
 Automatically find the correct template using an `ntc-templates` index file.
