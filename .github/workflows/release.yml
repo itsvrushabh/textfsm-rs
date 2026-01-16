@@ -34,6 +34,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
+      - name: Run Tests
+        run: cargo test --all-features
+
+      # Add this step to clear changes to Cargo.lock created by the tests
+      - name: Clean working directory
+        run: git checkout Cargo.lock
+
       - name: Log in to crates.io
         run: cargo login ${{ secrets.CRATES_IO_TOKEN }}
 
