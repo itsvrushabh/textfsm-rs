@@ -26,8 +26,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-textfsm-rs = { git = "https://github.com/itsvrushabh/textfsm-rs.git" }
-serde = { version = "1.0", features = ["derive"] }
+textfsm-rs = "0.3.4" # Check crates.io for the latest version
 ```
 
 ## Quick Start
