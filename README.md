@@ -26,7 +26,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-textfsm-rs = "0.3.4" # Check crates.io for the latest version
+textfsm-rs = "0.3.5" # Check crates.io for the latest version
 ```
 
 ## Quick Start
@@ -97,7 +97,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## Documentation
 
-*   [API Documentation](https://docs.rs/textfsm-rs) - Official crate documentation on docs.rs.
+*   [API Documentation](https://docs.rs/textfsm-rs/latest) - Official crate documentation on docs.rs.
 *   [Usage Guide](docs/usage.md) - Detailed examples and API usage.
 *   [Creating Templates](docs/creating_templates.md) - Syntax guide for writing .textfsm files.
 *   [Advanced Examples](docs/advanced_examples.md) - Patterns for complex parsing scenarios.

@@ -1,12 +1,12 @@
 [package]
 name = "textfsm-rs"
-version = "0.3.4"
+version = "0.3.5"
 edition = "2024"
 description = "A Rust implementation of TextFSM"
 license = "Apache-2.0"
 repository = "https://github.com/itsvrushabh/textfsm-rs"
 authors = ["Rust User <itsvrushabh@gmail.com>"]
-keywords = ["textfsm", "parser", "network", "automation"]
+keywords = ["textfsm", "parser", "network", "automation", "switch"]
 categories = ["network-programming", "parsing"]
 exclude = [
     "tests/real_data",
